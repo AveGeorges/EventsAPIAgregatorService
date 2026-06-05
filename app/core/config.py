@@ -11,11 +11,11 @@ class Settings(BaseSettings):
     LOG_FILE_MAX_BYTES: int = 10 * 1024 * 1024
     LOG_FILE_BACKUP_COUNT: int = 5
 
-    DATABASE_HOST: str = "localhost"
-    DATABASE_PORT: int = 5432
-    DATABASE_NAME: str = "agregator_service"
-    DATABASE_USERNAME: str = "postgres"
-    DATABASE_PASSWORD: str = "postgres"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_DATABASE_NAME: str = "agregator_service"
+    POSTGRES_USERNAME: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
 
     EVENTS_PROVIDER_BASE_URL: str = "http://events-provider.dev-2.python-labs.ru"
     EVENTS_PROVIDER_API_KEY: str = ""
@@ -32,15 +32,15 @@ class Settings(BaseSettings):
     @property
     def database_url_sync(self) -> str:
         return (
-            f"postgresql+psycopg2://{self.DATABASE_USERNAME}:{self.DATABASE_PASSWORD}"
-            f"@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            f"postgresql+psycopg2://{self.POSTGRES_USERNAME}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DATABASE_NAME}"
         )
 
     @property
     def database_url(self) -> str:
         return (
-            f"postgresql+asyncpg://{self.DATABASE_USERNAME}:{self.DATABASE_PASSWORD}"
-            f"@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            f"postgresql+asyncpg://{self.POSTGRES_USERNAME}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DATABASE_NAME}"
         )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

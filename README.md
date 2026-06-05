@@ -45,7 +45,7 @@ uv run pytest -q
 См. `.env.example`. Ключевые группы:
 
 - `LOG_*` — формат и вывод логов
-- `DATABASE_*` — PostgreSQL (шаг 2)
+- `POSTGRES_*` — PostgreSQL (шаг 2; на LMS задаёт платформа)
 - `EVENTS_PROVIDER_*` — URL и API-ключ провайдера
 - `SYNC_CRON_*` — расписание фоновой синхронизации (шаг 6)
 
