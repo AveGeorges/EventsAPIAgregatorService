@@ -17,6 +17,18 @@ class Settings(BaseSettings):
     DATABASE_USERNAME: str = "postgres"
     DATABASE_PASSWORD: str = "postgres"
 
+    EVENTS_PROVIDER_BASE_URL: str = "http://events-provider.dev-2.python-labs.ru"
+    EVENTS_PROVIDER_API_KEY: str = ""
+
+    SYNC_CRON_ENABLED: bool = True
+    SYNC_CRON_HOUR: int = 3
+    SYNC_CRON_MINUTE: int = 0
+    SYNC_CRON_TIMEZONE: str = "UTC"
+
+    @property
+    def events_provider_base_url(self) -> str:
+        return self.EVENTS_PROVIDER_BASE_URL.rstrip("/") + "/"
+
     @property
     def database_url_sync(self) -> str:
         return (

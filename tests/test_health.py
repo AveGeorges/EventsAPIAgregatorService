@@ -7,3 +7,5 @@ async def test_health(client: AsyncClient):
     response = await client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert "X-Request-ID" in response.headers
+
