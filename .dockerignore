@@ -1,0 +1,29 @@
+# Git и CI — не нужны в runtime-образе
+.git
+.github
+
+# Секреты и локальная среда
+.env
+.env.*
+!.env.example
+
+# Python
+.venv
+__pycache__
+*.py[cod]
+*.pyo
+.mypy_cache
+.ruff_cache
+.pytest_cache
+
+# Логи и артефакты
+logs
+*.log
+
+# IDE
+.idea
+.vscode
+.cursor
+
+# Документация (не влияет на работу API)
+README.md
