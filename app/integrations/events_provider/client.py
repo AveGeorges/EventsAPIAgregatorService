@@ -1,0 +1,184 @@
+from collections.abc import AsyncIterator
+from datetime import date
+from typing import Any
+from uuid import UUID
+
+import httpx
+
+from app.core.config import settings
+from app.integrations.events_provider.exceptions import (
+    EventsProviderAuthError,
+    EventsProviderBadRequestError,
+    EventsProviderError,
+    EventsProviderNotFoundError,
+    EventsProviderRateLimitError,
+    EventsProviderServerError,
+)
+from app.integrations.events_provider.schemas import (
+    ProviderEventSchema,
+    ProviderEventsPageSchema,
+    ProviderRegisterRequestSchema,
+    ProviderRegisterResponseSchema,
+    ProviderSeatsSchema,
+    ProviderUnregisterResponseSchema,
+)
+
+
+class EventsProviderClient:
+    """Async HTTP-клиент Events Provider API."""
+
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self._base_url = base_url.rstrip("/") + "/"
+        self._api_key = api_key
+        self._owns_client = client is None
+        self._client = client or httpx.AsyncClient(
+            base_url=self._base_url,
+            headers={"x-api-key": self._api_key},
+            timeout=httpx.Timeout(30.0),
+        )
+
+    async def aclose(self) -> None:
+        if self._owns_client:
+            await self._client.aclose()
+
+    async def __aenter__(self) -> "EventsProviderClient":
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        await self.aclose()
+
+    async def list_events(
+        self,
+        changed_at: date,
+        *,
+        page_url: str | None = None,
+    ) -> ProviderEventsPageSchema:
+        if page_url:
+            response = await self._request("GET", page_url, absolute=True)
+        else:
+            response = await self._request(
+                "GET",
+                "api/events/",
+                params={"changed_at": changed_at.isoformat()},
+            )
+        return ProviderEventsPageSchema.model_validate(response.json())
+
+    async def get_event(self, event_id: UUID) -> ProviderEventSchema:
+        response = await self._request("GET", f"api/events/{event_id}/")
+        return ProviderEventSchema.model_validate(response.json())
+
+    async def get_seats(self, event_id: UUID) -> ProviderSeatsSchema:
+        response = await self._request("GET", f"api/events/{event_id}/seats/")
+        return ProviderSeatsSchema.model_validate(response.json())
+
+    async def register(
+        self,
+        event_id: UUID,
+        payload: ProviderRegisterRequestSchema,
+    ) -> ProviderRegisterResponseSchema:
+        response = await self._request(
+            "POST",
+            f"api/events/{event_id}/register/",
+            json=payload.model_dump(mode="json"),
+        )
+        return ProviderRegisterResponseSchema.model_validate(response.json())
+
+    async def unregister(
+        self,
+        event_id: UUID,
+        ticket_id: UUID,
+    ) -> ProviderUnregisterResponseSchema:
+        response = await self._request(
+            "DELETE",
+            f"api/events/{event_id}/unregister/",
+            params={"ticket_id": str(ticket_id)},
+        )
+        return ProviderUnregisterResponseSchema.model_validate(response.json())
+
+    async def iter_all_events(self, changed_at: date) -> AsyncIterator[ProviderEventSchema]:
+        page = await self.list_events(changed_at)
+        for event in page.results:
+            yield event
+
+        next_url = page.next
+        while next_url:
+            page = await self.list_events(changed_at, page_url=next_url)
+            for event in page.results:
+                yield event
+            next_url = page.next
+
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        absolute: bool = False,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        request_url = url if absolute else url.lstrip("/")
+        try:
+            response = await self._client.request(method, request_url, **kwargs)
+        except httpx.HTTPError as exc:
+            raise EventsProviderError(f"Events Provider request failed: {exc}") from exc
+
+        self._raise_for_status(response)
+        return response
+
+    def _raise_for_status(self, response: httpx.Response) -> None:
+        if response.is_success:
+            return
+
+        status_code = response.status_code
+        message = self._extract_error_message(response)
+
+        if status_code == 401:
+            raise EventsProviderAuthError(message, status_code=status_code)
+        if status_code == 404:
+            raise EventsProviderNotFoundError(message, status_code=status_code)
+        if status_code == 400:
+            raise EventsProviderBadRequestError(message, status_code=status_code)
+        if status_code == 429:
+            raise EventsProviderRateLimitError(message, status_code=status_code)
+        if status_code >= 500:
+            raise EventsProviderServerError(message, status_code=status_code)
+
+        raise EventsProviderError(message, status_code=status_code)
+
+    @staticmethod
+    def _extract_error_message(response: httpx.Response) -> str:
+        content_type = response.headers.get("content-type", "")
+        if "application/json" in content_type:
+            try:
+                payload = response.json()
+            except ValueError:
+                return response.text or f"HTTP {response.status_code}"
+            if isinstance(payload, dict):
+                detail = payload.get("detail")
+                if isinstance(detail, str):
+                    return detail
+                if isinstance(detail, dict):
+                    return str(detail.get("message") or detail)
+            return str(payload)
+
+        text = response.text.strip()
+        if text:
+            return text[:500]
+        return f"HTTP {response.status_code}"
+
+
+def create_events_provider_client(
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    client: httpx.AsyncClient | None = None,
+) -> EventsProviderClient:
+    return EventsProviderClient(
+        base_url=base_url or settings.events_provider_base_url,
+        api_key=api_key or settings.EVENTS_PROVIDER_API_KEY,
+        client=client,
+    )

@@ -14,6 +14,8 @@ app/api/v1/
 
 Точка входа: `app/main.py` (`create_app`, `lifespan`, middleware).
 
+Интеграция с Events Provider: `app/integrations/events_provider/` (HTTP-клиент, схемы провайдера).
+
 ## Endpoints (текущее состояние)
 
 | Метод | Путь | Описание |
