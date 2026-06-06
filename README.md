@@ -9,7 +9,7 @@ Backend-сервис-агрегатор для [Events Provider API](http://even
 ```
 app/api/v1/
 ├── health.py    # GET /api/health
-├── events.py    # GET /api/events, GET /api/events/{event_id}
+├── events.py    # GET /api/events, GET /api/events/{event_id}, GET .../seats
 ├── sync.py      # POST /api/sync/trigger
 └── router.py    # сборка v1-роутеров
 ```
@@ -25,6 +25,7 @@ app/api/v1/
 | GET | `/api/health` | Проверка доступности сервиса |
 | GET | `/api/events` | Список событий из БД (`date_from`, `page`, `page_size`) |
 | GET | `/api/events/{event_id}` | Детали события с полной информацией о площадке |
+| GET | `/api/events/{event_id}/seats` | Свободные места (провайдер + кэш `SEATS_CACHE_TTL_SECONDS`) |
 | POST | `/api/sync/trigger` | Ручной запуск синхронизации с Events Provider |
 
 Swagger UI: `/docs`
@@ -55,7 +56,8 @@ uv run pytest -q
 - `LOG_*` — формат и вывод логов
 - `POSTGRES_*` — PostgreSQL (шаг 2; на LMS задаёт платформа)
 - `EVENTS_PROVIDER_*` — URL и API-ключ провайдера
-- `SYNC_CRON_*` — расписание фоновой синхронизации (шаг 6)
+- `SEATS_CACHE_TTL_SECONDS` — TTL in-memory кэша свободных мест (по умолчанию 30)
+- `SYNC_CRON_*` — расписание фоновой синхронизации (шаг 5)
 
 **LMS:** для агрегатора в кластере задайте внутренний URL провайдера:
 

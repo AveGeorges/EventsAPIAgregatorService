@@ -5,6 +5,7 @@ from app.schemas.event import (
     PlaceDetailSchema,
     PlaceSummarySchema,
 )
+from app.schemas.seats import SeatsResponseSchema
 from app.schemas.sync import SyncTriggerResponse
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "EventsPageResponseSchema",
     "PlaceDetailSchema",
     "PlaceSummarySchema",
+    "SeatsResponseSchema",
     "SyncTriggerResponse",
 ]

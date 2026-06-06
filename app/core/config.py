@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +25,8 @@ class Settings(BaseSettings):
     SYNC_CRON_HOUR: int = 3
     SYNC_CRON_MINUTE: int = 0
     SYNC_CRON_TIMEZONE: str = "UTC"
+
+    SEATS_CACHE_TTL_SECONDS: int = Field(default=30, ge=1)
 
     @property
     def events_provider_base_url(self) -> str:
