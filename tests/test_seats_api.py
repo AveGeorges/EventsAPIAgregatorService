@@ -53,7 +53,7 @@ async def test_get_event_seats_fetches_from_provider(client: AsyncClient, db_ses
         route = respx.get(f"{BASE_URL}api/events/{EVENT_ID}/seats/").mock(
             return_value=Response(
                 200,
-                json={"event_id": str(EVENT_ID), "available_seats": ["A1", "A2"]},
+                json={"seats": ["A1", "A2"]},
             )
         )
 
@@ -73,7 +73,7 @@ async def test_get_event_seats_uses_cache_on_second_request(client: AsyncClient,
         route = respx.get(f"{BASE_URL}api/events/{EVENT_ID}/seats/").mock(
             return_value=Response(
                 200,
-                json={"event_id": str(EVENT_ID), "available_seats": ["A1"]},
+                json={"seats": ["A1"]},
             )
         )
 

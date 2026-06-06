@@ -33,7 +33,7 @@ class SeatsService:
             return cached
 
         provider_seats = await provider_client.get_seats(event_id)
-        result = SeatsService._to_response(provider_seats)
+        result = SeatsService._to_response(event_id, provider_seats)
         seats_cache.set(event_id, result)
         return result
 
@@ -42,5 +42,5 @@ class SeatsService:
         (cache or _default_cache).invalidate(event_id)
 
     @staticmethod
-    def _to_response(provider_seats: ProviderSeatsSchema) -> SeatsResponseSchema:
-        return SeatsResponseSchema.model_validate(provider_seats)
+    def _to_response(event_id: UUID, provider_seats: ProviderSeatsSchema) -> SeatsResponseSchema:
+        return SeatsResponseSchema(event_id=event_id, available_seats=provider_seats.seats)

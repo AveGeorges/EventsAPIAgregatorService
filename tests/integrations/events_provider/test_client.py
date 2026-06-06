@@ -80,14 +80,13 @@ async def test_get_seats(provider_client: EventsProviderClient):
     respx.get(f"{BASE_URL}api/events/{EVENT_ID}/seats/").mock(
         return_value=httpx.Response(
             200,
-            json={"event_id": str(EVENT_ID), "available_seats": ["A1", "A2"]},
+            json={"seats": ["A1", "A2"]},
         )
     )
 
     seats = await provider_client.get_seats(EVENT_ID)
 
-    assert seats.event_id == EVENT_ID
-    assert seats.available_seats == ["A1", "A2"]
+    assert seats.seats == ["A1", "A2"]
 
 
 @respx.mock

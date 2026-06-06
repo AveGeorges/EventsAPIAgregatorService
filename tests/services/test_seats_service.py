@@ -13,7 +13,7 @@ EVENT_ID = UUID("550e8400-e29b-41d4-a716-446655440000")
 
 
 def sample_provider_seats() -> ProviderSeatsSchema:
-    return ProviderSeatsSchema(event_id=EVENT_ID, available_seats=["A1", "A2"])
+    return ProviderSeatsSchema(seats=["A1", "A2"])
 
 
 @pytest.mark.asyncio

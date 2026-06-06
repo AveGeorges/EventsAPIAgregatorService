@@ -40,8 +40,7 @@ class ProviderEventsPageSchema(BaseModel):
 
 
 class ProviderSeatsSchema(BaseModel):
-    event_id: UUID
-    available_seats: list[str] = Field(default_factory=list)
+    seats: list[str] = Field(default_factory=list)
 
 
 class ProviderRegisterRequestSchema(BaseModel):
