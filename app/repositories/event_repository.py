@@ -1,5 +1,10 @@
+from datetime import date, datetime, timezone
+from uuid import UUID
+
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.integrations.events_provider.schemas import ProviderEventSchema
 from app.models.models import Event
@@ -34,3 +39,45 @@ class EventRepository:
             },
         )
         await session.execute(stmt)
+
+    @staticmethod
+    async def count(session: AsyncSession, *, date_from: date | None = None) -> int:
+        stmt = select(func.count()).select_from(Event)
+        if date_from is not None:
+            stmt = stmt.where(Event.event_time >= EventRepository._start_of_day(date_from))
+        result = await session.execute(stmt)
+        return result.scalar_one()
+
+    @staticmethod
+    async def list_page(
+        session: AsyncSession,
+        *,
+        date_from: date | None = None,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> list[Event]:
+        stmt = (
+            select(Event)
+            .options(joinedload(Event.place))
+            .order_by(Event.event_time.asc())
+            .offset(offset)
+            .limit(limit)
+        )
+        if date_from is not None:
+            stmt = stmt.where(Event.event_time >= EventRepository._start_of_day(date_from))
+        result = await session.execute(stmt)
+        return list(result.scalars().unique().all())
+
+    @staticmethod
+    async def get_by_id(session: AsyncSession, event_id: UUID) -> Event | None:
+        stmt = (
+            select(Event)
+            .options(joinedload(Event.place))
+            .where(Event.id == event_id)
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    def _start_of_day(value: date) -> datetime:
+        return datetime.combine(value, datetime.min.time(), tzinfo=timezone.utc)

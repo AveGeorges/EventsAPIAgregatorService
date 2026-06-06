@@ -9,6 +9,8 @@ Backend-сервис-агрегатор для [Events Provider API](http://even
 ```
 app/api/v1/
 ├── health.py    # GET /api/health
+├── events.py    # GET /api/events, GET /api/events/{event_id}
+├── sync.py      # POST /api/sync/trigger
 └── router.py    # сборка v1-роутеров
 ```
 
@@ -21,6 +23,9 @@ app/api/v1/
 | Метод | Путь | Описание |
 |-------|------|----------|
 | GET | `/api/health` | Проверка доступности сервиса |
+| GET | `/api/events` | Список событий из БД (`date_from`, `page`, `page_size`) |
+| GET | `/api/events/{event_id}` | Детали события с полной информацией о площадке |
+| POST | `/api/sync/trigger` | Ручной запуск синхронизации с Events Provider |
 
 Swagger UI: `/docs`
 
@@ -33,6 +38,7 @@ uv run uvicorn app.main:app --reload
 ```
 
 - Health: http://localhost:8000/api/health
+- Events: http://localhost:8000/api/events?page=1&page_size=20
 - Docs: http://localhost:8000/docs
 
 ## Тесты и линтер

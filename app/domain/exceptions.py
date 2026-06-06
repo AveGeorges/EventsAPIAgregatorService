@@ -1,3 +1,6 @@
+from uuid import UUID
+
+
 class DomainError(Exception):
     """Базовая доменная ошибка."""
 
@@ -8,3 +11,13 @@ class DomainError(Exception):
     def __init__(self, message: str | None = None) -> None:
         self.message = message or self.default_message
         super().__init__(self.message)
+
+
+class EventNotFound(DomainError):
+    status_code = 404
+    code = "event_not_found"
+    default_message = "Event not found"
+
+    def __init__(self, event_id: UUID | None = None, message: str | None = None) -> None:
+        self.event_id = event_id
+        super().__init__(message)
