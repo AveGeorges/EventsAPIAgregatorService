@@ -50,7 +50,12 @@ class Event(Base):
     event_time = Column(DateTime(timezone=True), nullable=False)
     registration_deadline = Column(DateTime(timezone=True), nullable=False)
     status = Column(
-        SQLAlchemyEnum(EventStatus, name="event_status", native_enum=False),
+        SQLAlchemyEnum(
+            EventStatus,
+            name="event_status",
+            native_enum=False,
+            values_callable=lambda enum: [member.value for member in enum],
+        ),
         nullable=False,
     )
     number_of_visitors = Column(Integer, nullable=False, default=0)

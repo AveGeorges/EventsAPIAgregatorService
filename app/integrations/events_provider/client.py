@@ -40,6 +40,7 @@ class EventsProviderClient:
             base_url=self._base_url,
             headers={"x-api-key": self._api_key},
             timeout=httpx.Timeout(30.0),
+            follow_redirects=True,
         )
 
     async def aclose(self) -> None:
