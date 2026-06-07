@@ -2,7 +2,13 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.domain.exceptions import DomainError
-from app.integrations.events_provider.exceptions import EventsProviderError
+from app.integrations.events_provider.exceptions import (
+    EventsProviderAuthError,
+    EventsProviderBadRequestError,
+    EventsProviderError,
+    EventsProviderNotFoundError,
+    EventsProviderRateLimitError,
+)
 
 
 async def domain_error_handler(_request: Request, exc: DomainError) -> JSONResponse:
@@ -12,10 +18,27 @@ async def domain_error_handler(_request: Request, exc: DomainError) -> JSONRespo
     )
 
 
+def _provider_error_status_code(exc: EventsProviderError) -> int:
+    if isinstance(exc, EventsProviderNotFoundError):
+        return 404
+    if isinstance(exc, EventsProviderBadRequestError):
+        return 400
+    if isinstance(exc, EventsProviderAuthError):
+        return 401
+    if isinstance(exc, EventsProviderRateLimitError):
+        return 429
+    if exc.status_code is not None and 400 <= exc.status_code < 500:
+        return exc.status_code
+    return 502
+
+
 async def events_provider_error_handler(
     _request: Request, exc: EventsProviderError
 ) -> JSONResponse:
-    return JSONResponse(status_code=502, content={"detail": exc.message})
+    return JSONResponse(
+        status_code=_provider_error_status_code(exc),
+        content={"detail": exc.message},
+    )
 
 
 def register_exception_handlers(app: FastAPI) -> None:

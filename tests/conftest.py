@@ -7,7 +7,7 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 os.environ.setdefault("EVENTS_PROVIDER_BASE_URL", "http://provider.test")
-os.environ["POSTGRES_HOST"] = "localhost"
+os.environ.setdefault("POSTGRES_HOST", "localhost")
 
 import pytest
 from httpx import ASGITransport, AsyncClient

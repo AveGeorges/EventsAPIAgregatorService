@@ -21,3 +21,13 @@ class EventNotFound(DomainError):
     def __init__(self, event_id: UUID | None = None, message: str | None = None) -> None:
         self.event_id = event_id
         super().__init__(message)
+
+
+class TicketNotFound(DomainError):
+    status_code = 404
+    code = "ticket_not_found"
+    default_message = "Ticket not found"
+
+    def __init__(self, ticket_id: UUID | None = None, message: str | None = None) -> None:
+        self.ticket_id = ticket_id
+        super().__init__(message)

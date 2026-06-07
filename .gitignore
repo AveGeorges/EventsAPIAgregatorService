@@ -4,5 +4,6 @@ __pycache__/
 *.py[cod]
 .ruff_cache/
 .pytest_cache/
+.cache/
 logs/
 *.log

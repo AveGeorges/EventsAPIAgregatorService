@@ -7,6 +7,7 @@ from app.schemas.event import (
 )
 from app.schemas.seats import SeatsResponseSchema
 from app.schemas.sync import SyncTriggerResponse
+from app.schemas.ticket import TicketCreateSchema, TicketResponseSchema
 
 __all__ = [
     "EventDetailSchema",
@@ -16,4 +17,6 @@ __all__ = [
     "PlaceSummarySchema",
     "SeatsResponseSchema",
     "SyncTriggerResponse",
+    "TicketCreateSchema",
+    "TicketResponseSchema",
 ]

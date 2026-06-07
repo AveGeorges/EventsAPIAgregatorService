@@ -19,11 +19,30 @@ services:
     build: .
     env_file:
       - .env
+    environment:
+      POSTGRES_HOST: db
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+
+  test:
+    build: .
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+      EVENTS_PROVIDER_BASE_URL: http://provider.test
+      HOME: /app
+      UV_CACHE_DIR: /app/.cache/uv
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "-c"]
+    command: ["alembic upgrade head && uv sync --group dev && uv run pytest -q"]
+    profiles:
+      - test
 
 volumes:
   postgres_data:

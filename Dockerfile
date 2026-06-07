@@ -22,9 +22,12 @@ COPY . .
 
 RUN addgroup --system --gid 1000 appuser \
     && adduser --system --uid 1000 --ingroup appuser --no-create-home appuser \
-    && mkdir -p /app/logs \
+    && mkdir -p /app/logs /app/.cache/uv \
     && chmod +x /app/scripts/entrypoint.sh \
     && chown -R appuser:appuser /app
+
+ENV HOME=/app \
+    UV_CACHE_DIR=/app/.cache/uv
 
 USER appuser
 

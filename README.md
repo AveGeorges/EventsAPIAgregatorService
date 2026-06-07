@@ -10,6 +10,7 @@ Backend-сервис-агрегатор для [Events Provider API](http://even
 app/api/v1/
 ├── health.py    # GET /api/health
 ├── events.py    # GET /api/events, GET /api/events/{event_id}, GET .../seats
+├── tickets.py   # POST /api/tickets, DELETE /api/tickets/{ticket_id}
 ├── sync.py      # POST /api/sync/trigger
 └── router.py    # сборка v1-роутеров
 ```
@@ -26,6 +27,8 @@ app/api/v1/
 | GET | `/api/events` | Список событий из БД (`date_from`, `page`, `page_size`) |
 | GET | `/api/events/{event_id}` | Детали события с полной информацией о площадке |
 | GET | `/api/events/{event_id}/seats` | Свободные места (провайдер + кэш `SEATS_CACHE_TTL_SECONDS`) |
+| POST | `/api/tickets` | Регистрация на событие (провайдер + запись в `tickets`, сброс кэша мест) |
+| DELETE | `/api/tickets/{ticket_id}` | Отмена билета (провайдер + удаление из `tickets`, сброс кэша мест) |
 | POST | `/api/sync/trigger` | Ручной запуск синхронизации с Events Provider |
 
 Swagger UI: `/docs`
@@ -44,9 +47,32 @@ uv run uvicorn app.main:app --reload
 
 ## Тесты и линтер
 
+### Локально (PostgreSQL через Docker)
+
 ```bash
+docker compose up -d db
+uv sync --group dev
+uv run alembic upgrade head
 uv run ruff check .
 uv run pytest -q
+```
+
+Ожидание: **49 passed** (интеграционные тесты подключаются к `localhost:5432`).
+
+### Все тесты в Docker-контейнере
+
+```bash
+docker compose build app
+docker compose up -d db
+docker compose --profile test run --rm test
+```
+
+Сервис `test` применяет миграции, ставит dev-зависимости и запускает pytest с `POSTGRES_HOST=db`.
+
+Линтер в контейнере:
+
+```bash
+docker compose run --rm --entrypoint="" app sh -c "uv sync --group dev && uv run ruff check ."
 ```
 
 ## Переменные окружения
@@ -89,6 +115,10 @@ flowchart LR
   Client -->|POST /api/tickets| Agg
   Agg -->|register| Prov
   Agg -->|сохранить билет| DB
+
+  Client -->|DELETE /api/tickets/id| Agg
+  Agg -->|unregister| Prov
+  Agg -->|DELETE ticket| DB
 
   Worker[Фон sync / POST /api/sync/trigger]
   Worker --> Agg
