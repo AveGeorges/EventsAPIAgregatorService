@@ -20,3 +20,7 @@ class TicketResponseSchema(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
+
+
+class TicketCancelResponseSchema(BaseModel):
+    success: bool

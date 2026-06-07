@@ -7,7 +7,7 @@ from app.integrations.events_provider.client import EventsProviderClient
 from app.integrations.events_provider.schemas import ProviderRegisterRequestSchema
 from app.repositories.event_repository import EventRepository
 from app.repositories.ticket_repository import TicketRepository
-from app.schemas.ticket import TicketCreateSchema, TicketResponseSchema
+from app.schemas.ticket import TicketCancelResponseSchema, TicketCreateSchema, TicketResponseSchema
 from app.services.seats_service import SeatsService
 
 
@@ -58,12 +58,13 @@ class TicketService:
         ticket_id: UUID,
         *,
         provider_client: EventsProviderClient,
-    ) -> None:
+    ) -> TicketCancelResponseSchema:
         ticket = await TicketRepository.get_by_ticket_id(session, ticket_id)
         if ticket is None:
             raise TicketNotFound(ticket_id)
 
-        await provider_client.unregister(ticket.event_id, ticket_id)
+        provider_response = await provider_client.unregister(ticket.event_id, ticket_id)
         await TicketRepository.delete(session, ticket_id)
         SeatsService.invalidate(ticket.event_id)
         await session.commit()
+        return TicketCancelResponseSchema(success=provider_response.success)

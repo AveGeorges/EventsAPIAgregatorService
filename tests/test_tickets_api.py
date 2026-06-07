@@ -70,11 +70,15 @@ async def test_create_ticket_http_returns_404_when_event_missing(
 
 @patch.object(TicketService, "cancel_ticket", new_callable=AsyncMock)
 @pytest.mark.asyncio
-async def test_cancel_ticket_http_returns_204(mock_cancel_ticket, http_client: AsyncClient):
+async def test_cancel_ticket_http_returns_success(mock_cancel_ticket, http_client: AsyncClient):
+    from app.schemas.ticket import TicketCancelResponseSchema
+
+    mock_cancel_ticket.return_value = TicketCancelResponseSchema(success=True)
+
     response = await http_client.delete(f"/api/tickets/{TICKET_ID}")
 
-    assert response.status_code == 204
-    assert response.content == b""
+    assert response.status_code == 200
+    assert response.json() == {"success": True}
     mock_cancel_ticket.assert_awaited_once()
 
 
@@ -157,7 +161,8 @@ async def test_cancel_ticket_unregisters_and_removes_local_record(
 
         response = await client.delete(f"/api/tickets/{TICKET_ID}")
 
-    assert response.status_code == 204
+    assert response.status_code == 200
+    assert response.json() == {"success": True}
     assert route.call_count == 1
     body = route.calls[0].request.read().decode()
     assert str(TICKET_ID) in body

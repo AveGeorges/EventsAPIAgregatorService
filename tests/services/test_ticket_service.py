@@ -4,7 +4,10 @@ from uuid import UUID
 import pytest
 
 from app.domain.exceptions import EventNotFound, TicketNotFound
-from app.integrations.events_provider.schemas import ProviderRegisterResponseSchema
+from app.integrations.events_provider.schemas import (
+    ProviderRegisterResponseSchema,
+    ProviderUnregisterResponseSchema,
+)
 from app.schemas.ticket import TicketCreateSchema, TicketResponseSchema
 from app.services.seats_service import SeatsService
 from app.services.ticket_service import TicketService
@@ -116,12 +119,15 @@ async def test_cancel_ticket_unregisters_with_provider_and_deletes_locally(
     mock_get_by_ticket_id.return_value = ticket
     session = AsyncMock()
     provider_client = AsyncMock()
+    provider_client.unregister.return_value = ProviderUnregisterResponseSchema(success=True)
 
-    await TicketService.cancel_ticket(
+    result = await TicketService.cancel_ticket(
         session,
         TICKET_ID,
         provider_client=provider_client,
     )
+
+    assert result.success is True
 
     provider_client.unregister.assert_awaited_once_with(EVENT_ID, TICKET_ID)
     mock_delete.assert_awaited_once_with(session, TICKET_ID)

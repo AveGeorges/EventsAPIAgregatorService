@@ -28,7 +28,7 @@ app/api/v1/
 | GET | `/api/events/{event_id}` | Детали события с полной информацией о площадке |
 | GET | `/api/events/{event_id}/seats` | Свободные места (провайдер + кэш `SEATS_CACHE_TTL_SECONDS`) |
 | POST | `/api/tickets` | Регистрация на событие (провайдер + запись в `tickets`, сброс кэша мест) |
-| DELETE | `/api/tickets/{ticket_id}` | Отмена билета (провайдер + удаление из `tickets`, сброс кэша мест) |
+| DELETE | `/api/tickets/{ticket_id}` | Отмена билета → `{"success": true}` (провайдер + удаление из `tickets`, сброс кэша мест) |
 | POST | `/api/sync/trigger` | Ручной запуск синхронизации с Events Provider |
 
 Swagger UI: `/docs`
