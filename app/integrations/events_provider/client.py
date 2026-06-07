@@ -97,7 +97,7 @@ class EventsProviderClient:
         response = await self._request(
             "DELETE",
             f"api/events/{event_id}/unregister/",
-            params={"ticket_id": str(ticket_id)},
+            json={"ticket_id": str(ticket_id)},
         )
         return ProviderUnregisterResponseSchema.model_validate(response.json())
 

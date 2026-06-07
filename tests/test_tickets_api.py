@@ -159,7 +159,9 @@ async def test_cancel_ticket_unregisters_and_removes_local_record(
 
     assert response.status_code == 204
     assert route.call_count == 1
-    assert route.calls[0].request.url.params["ticket_id"] == str(TICKET_ID)
+    body = route.calls[0].request.read().decode()
+    assert str(TICKET_ID) in body
+    assert "ticket_id" in body
 
     result = await db_session.execute(select(Ticket).where(Ticket.ticket_id == TICKET_ID))
     assert result.scalar_one_or_none() is None
@@ -192,3 +194,20 @@ async def test_create_ticket_returns_404_for_unknown_event(client: AsyncClient):
 
     assert response.status_code == 404
     assert response.json()["detail"]["code"] == "event_not_found"
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_returns_400_for_invalid_body(http_client: AsyncClient):
+    response = await http_client.post(
+        "/api/tickets",
+        json={
+            "event_id": "not-a-uuid",
+            "first_name": "Ivan",
+            "last_name": "Ivanov",
+            "email": "x",
+            "seat": "A1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "detail" in response.json()

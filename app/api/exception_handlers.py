@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.domain.exceptions import DomainError
@@ -41,6 +42,13 @@ async def events_provider_error_handler(
     )
 
 
+async def validation_error_handler(
+    _request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.errors()})
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(DomainError, domain_error_handler)
     app.add_exception_handler(EventsProviderError, events_provider_error_handler)
+    app.add_exception_handler(RequestValidationError, validation_error_handler)

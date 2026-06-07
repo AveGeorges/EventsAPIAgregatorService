@@ -119,7 +119,9 @@ async def test_unregister(provider_client: EventsProviderClient):
     response = await provider_client.unregister(EVENT_ID, TICKET_ID)
 
     assert response.success is True
-    assert route.calls[0].request.url.params["ticket_id"] == str(TICKET_ID)
+    body = route.calls[0].request.read().decode()
+    assert str(TICKET_ID) in body
+    assert "ticket_id" in body
 
 
 @respx.mock
