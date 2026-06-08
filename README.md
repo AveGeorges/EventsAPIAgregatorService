@@ -29,9 +29,22 @@ app/api/v1/
 | GET | `/api/events/{event_id}/seats` | Свободные места (провайдер + кэш `SEATS_CACHE_TTL_SECONDS`) |
 | POST | `/api/tickets` | Регистрация на событие (провайдер + запись в `tickets`, сброс кэша мест) |
 | DELETE | `/api/tickets/{ticket_id}` | Отмена билета → `{"success": true}` (провайдер + удаление из `tickets`, сброс кэша мест) |
-| POST | `/api/sync/trigger` | Ручной запуск синхронизации с Events Provider |
+| POST | `/api/sync/trigger` | Ручной запуск синхронизации с Events Provider (409, если sync уже идёт) |
 
 Swagger UI: `/docs`
+
+## Синхронизация событий
+
+События попадают в PostgreSQL двумя способами:
+
+| Способ | Когда |
+|--------|--------|
+| **Cron** | Каждый день в `SYNC_CRON_HOUR:SYNC_CRON_MINUTE` (`SYNC_CRON_TIMEZONE`, по умолчанию 03:00 UTC) |
+| **POST /api/sync/trigger** | Вручную или автотесты LMS |
+
+Оба пути используют `run_sync_with_lock` и **PostgreSQL advisory lock** (`pg_try_advisory_lock`) — при нескольких pod'ах в k8s sync выполняет только один процесс. Остальные cron-запуски пропускаются с записью в лог; повторный trigger возвращает **409** `sync_already_running`.
+
+Отключить фоновый cron: `SYNC_CRON_ENABLED=false` (остаётся только ручной trigger).
 
 ## Локальный запуск
 
@@ -57,7 +70,7 @@ uv run ruff check .
 uv run pytest -q
 ```
 
-Ожидание: **49 passed** (интеграционные тесты подключаются к `localhost:5432`).
+Ожидание: **60 passed** (интеграционные тесты подключаются к `localhost:5432`).
 
 ### Все тесты в Docker-контейнере
 
@@ -83,7 +96,14 @@ docker compose run --rm --entrypoint="" app sh -c "uv sync --group dev && uv run
 - `POSTGRES_*` — PostgreSQL (шаг 2; на LMS задаёт платформа)
 - `EVENTS_PROVIDER_*` — URL и API-ключ провайдера
 - `SEATS_CACHE_TTL_SECONDS` — TTL in-memory кэша свободных мест (по умолчанию 30)
-- `SYNC_CRON_*` — расписание фоновой синхронизации (шаг 5)
+- `SYNC_CRON_*` — фоновая синхронизация (APScheduler в `lifespan`):
+
+| Переменная | По умолчанию | Описание |
+|------------|--------------|----------|
+| `SYNC_CRON_ENABLED` | `true` | Включить ежедневный cron |
+| `SYNC_CRON_HOUR` | `3` | Час запуска |
+| `SYNC_CRON_MINUTE` | `0` | Минута запуска |
+| `SYNC_CRON_TIMEZONE` | `UTC` | Таймзона расписания |
 
 **LMS:** для агрегатора в кластере задайте внутренний URL провайдера:
 
@@ -120,8 +140,11 @@ flowchart LR
   Agg -->|unregister| Prov
   Agg -->|DELETE ticket| DB
 
-  Worker[Фон sync / POST /api/sync/trigger]
-  Worker --> Agg
+  Cron[APScheduler cron]
+  Trigger[POST /api/sync/trigger]
+  Cron --> Agg
+  Trigger --> Agg
+  Agg -->|advisory lock| DB
   Agg -->|GET events cursor| Prov
   Agg -->|UPSERT| DB
 ```

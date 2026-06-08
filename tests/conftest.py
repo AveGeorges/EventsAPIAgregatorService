@@ -8,6 +8,7 @@ if sys.platform == "win32":
 
 os.environ.setdefault("EVENTS_PROVIDER_BASE_URL", "http://provider.test")
 os.environ.setdefault("POSTGRES_HOST", "localhost")
+os.environ.setdefault("SYNC_CRON_ENABLED", "false")
 
 import pytest
 from httpx import ASGITransport, AsyncClient

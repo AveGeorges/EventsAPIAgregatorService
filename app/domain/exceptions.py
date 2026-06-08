@@ -31,3 +31,9 @@ class TicketNotFound(DomainError):
     def __init__(self, ticket_id: UUID | None = None, message: str | None = None) -> None:
         self.ticket_id = ticket_id
         super().__init__(message)
+
+
+class SyncLockNotAcquired(DomainError):
+    status_code = 409
+    code = "sync_already_running"
+    default_message = "Sync is already running in another process"
