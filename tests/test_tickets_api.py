@@ -11,7 +11,7 @@ from app.models.models import Ticket
 from app.schemas.ticket import TicketCreateSchema, TicketResponseSchema
 from app.services.seats_service import SeatsService
 from app.services.ticket_service import TicketService
-from tests.integrations.events_provider.conftest import BASE_URL, EVENT_ID, TICKET_ID
+from tests.integrations.events_provider.conftest import EVENT_ID, TICKET_ID, provider_url
 from tests.test_events_api import seed_event
 
 
@@ -102,7 +102,7 @@ async def test_create_ticket_registers_with_provider_and_persists(
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
-        route = respx.post(f"{BASE_URL}api/events/{EVENT_ID}/register/").mock(
+        route = respx.post(provider_url("api", "events", EVENT_ID, "register")).mock(
             return_value=Response(201, json={"ticket_id": str(TICKET_ID)})
         )
 
@@ -124,10 +124,10 @@ async def test_create_ticket_invalidates_seats_cache(client: AsyncClient, db_ses
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
-        respx.post(f"{BASE_URL}api/events/{EVENT_ID}/register/").mock(
+        respx.post(provider_url("api", "events", EVENT_ID, "register")).mock(
             return_value=Response(201, json={"ticket_id": str(TICKET_ID)})
         )
-        seats_route = respx.get(f"{BASE_URL}api/events/{EVENT_ID}/seats/").mock(
+        seats_route = respx.get(provider_url("api", "events", EVENT_ID, "seats")).mock(
             return_value=Response(200, json={"seats": ["A1"]})
         )
 
@@ -150,12 +150,12 @@ async def test_cancel_ticket_unregisters_and_removes_local_record(
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
-        respx.post(f"{BASE_URL}api/events/{EVENT_ID}/register/").mock(
+        respx.post(provider_url("api", "events", EVENT_ID, "register")).mock(
             return_value=Response(201, json={"ticket_id": str(TICKET_ID)})
         )
         await client.post("/api/tickets", json=sample_create_body())
 
-        route = respx.delete(f"{BASE_URL}api/events/{EVENT_ID}/unregister/").mock(
+        route = respx.delete(provider_url("api", "events", EVENT_ID, "unregister")).mock(
             return_value=Response(200, json={"success": True})
         )
 
@@ -180,7 +180,7 @@ async def test_create_ticket_returns_400_when_provider_rejects_seat(
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
-        respx.post(f"{BASE_URL}api/events/{EVENT_ID}/register/").mock(
+        respx.post(provider_url("api", "events", EVENT_ID, "register")).mock(
             return_value=Response(400, json={"detail": "Seat already taken"})
         )
 

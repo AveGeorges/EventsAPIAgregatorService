@@ -1,6 +1,8 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.url_utils import normalize_base_url
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Events API Agregator Service"
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
 
     @property
     def events_provider_base_url(self) -> str:
-        return self.EVENTS_PROVIDER_BASE_URL.rstrip("/") + "/"
+        return normalize_base_url(self.EVENTS_PROVIDER_BASE_URL)
 
     @property
     def database_url_sync(self) -> str:

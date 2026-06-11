@@ -5,6 +5,7 @@ import httpx
 import pytest
 import respx
 
+from app.core.url_utils import append_query, join_url
 from app.integrations.events_provider.client import EventsProviderClient
 from app.integrations.events_provider.exceptions import (
     EventsProviderAuthError,
@@ -16,6 +17,7 @@ from tests.integrations.events_provider.conftest import (
     EVENT_ID,
     PLACE_ID,
     TICKET_ID,
+    provider_url,
     sample_event_payload,
     sample_events_page_payload,
 )
@@ -23,7 +25,7 @@ from tests.integrations.events_provider.conftest import (
 
 @respx.mock
 async def test_list_events_sends_api_key_and_parses_response(provider_client: EventsProviderClient):
-    route = respx.get(f"{BASE_URL}api/events/").mock(
+    route = respx.get(provider_url("api", "events")).mock(
         return_value=httpx.Response(200, json=sample_events_page_payload())
     )
 
@@ -44,7 +46,10 @@ async def test_iter_all_events_follows_next_url(provider_client: EventsProviderC
     second_event["id"] = "660e8400-e29b-41d4-a716-446655440099"
     second_event["name"] = "Second event"
 
-    next_url = f"{BASE_URL}api/events/?changed_at=2000-01-01&cursor=abc"
+    next_url = append_query(
+        join_url(BASE_URL, "api", "events", trailing_slash=True),
+        {"changed_at": "2000-01-01", "cursor": "abc"},
+    )
     respx.route(method="GET", url__regex=r"http://provider\.test/api/events/.*").mock(
         side_effect=[
             httpx.Response(200, json=sample_events_page_payload(next_url=next_url)),
@@ -64,7 +69,7 @@ async def test_iter_all_events_follows_next_url(provider_client: EventsProviderC
 
 @respx.mock
 async def test_get_event(provider_client: EventsProviderClient):
-    respx.get(f"{BASE_URL}api/events/{EVENT_ID}/").mock(
+    respx.get(provider_url("api", "events", EVENT_ID)).mock(
         return_value=httpx.Response(200, json=sample_event_payload())
     )
 
@@ -77,7 +82,7 @@ async def test_get_event(provider_client: EventsProviderClient):
 
 @respx.mock
 async def test_get_seats(provider_client: EventsProviderClient):
-    respx.get(f"{BASE_URL}api/events/{EVENT_ID}/seats/").mock(
+    respx.get(provider_url("api", "events", EVENT_ID, "seats")).mock(
         return_value=httpx.Response(
             200,
             json={"seats": ["A1", "A2"]},
@@ -91,7 +96,7 @@ async def test_get_seats(provider_client: EventsProviderClient):
 
 @respx.mock
 async def test_register(provider_client: EventsProviderClient):
-    route = respx.post(f"{BASE_URL}api/events/{EVENT_ID}/register/").mock(
+    route = respx.post(provider_url("api", "events", EVENT_ID, "register")).mock(
         return_value=httpx.Response(201, json={"ticket_id": str(TICKET_ID)})
     )
     payload = ProviderRegisterRequestSchema(
@@ -112,7 +117,7 @@ async def test_register(provider_client: EventsProviderClient):
 
 @respx.mock
 async def test_unregister(provider_client: EventsProviderClient):
-    route = respx.delete(f"{BASE_URL}api/events/{EVENT_ID}/unregister/").mock(
+    route = respx.delete(provider_url("api", "events", EVENT_ID, "unregister")).mock(
         return_value=httpx.Response(200, json={"success": True})
     )
 
@@ -126,7 +131,7 @@ async def test_unregister(provider_client: EventsProviderClient):
 
 @respx.mock
 async def test_list_events_raises_auth_error(provider_client: EventsProviderClient):
-    respx.get(f"{BASE_URL}api/events/").mock(
+    respx.get(provider_url("api", "events")).mock(
         return_value=httpx.Response(401, json={"detail": "Invalid API key"})
     )
 
@@ -137,7 +142,7 @@ async def test_list_events_raises_auth_error(provider_client: EventsProviderClie
 @respx.mock
 async def test_get_event_raises_not_found(provider_client: EventsProviderClient):
     missing_id = UUID("00000000-0000-0000-0000-000000000099")
-    respx.get(f"{BASE_URL}api/events/{missing_id}/").mock(
+    respx.get(provider_url("api", "events", missing_id)).mock(
         return_value=httpx.Response(404, json={"detail": "Event not found"})
     )
 

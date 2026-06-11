@@ -6,6 +6,7 @@ from uuid import UUID
 import httpx
 
 from app.core.config import settings
+from app.core.url_utils import join_url, normalize_base_url
 from app.integrations.events_provider.exceptions import (
     EventsProviderAuthError,
     EventsProviderBadRequestError,
@@ -54,7 +55,7 @@ class EventsProviderClient:
         api_key: str,
         client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._base_url = base_url.rstrip("/") + "/"
+        self._base_url = normalize_base_url(base_url)
         self._api_key = api_key
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(
@@ -74,6 +75,9 @@ class EventsProviderClient:
     async def __aexit__(self, *args: object) -> None:
         await self.aclose()
 
+    def _endpoint(self, *parts: str) -> str:
+        return join_url(self._base_url, *parts, trailing_slash=True)
+
     async def list_events(
         self,
         changed_at: date,
@@ -85,17 +89,23 @@ class EventsProviderClient:
         else:
             response = await self._request(
                 "GET",
-                "api/events/",
+                self._endpoint("api", "events"),
+                absolute=True,
                 params={"changed_at": changed_at.isoformat()},
             )
         return ProviderEventsPageSchema.model_validate(response.json())
 
     async def get_event(self, event_id: UUID) -> ProviderEventSchema:
-        response = await self._request("GET", f"api/events/{event_id}/")
+        url = self._endpoint("api", "events", event_id)
+        response = await self._request("GET", url, absolute=True)
         return ProviderEventSchema.model_validate(response.json())
 
     async def get_seats(self, event_id: UUID) -> ProviderSeatsSchema:
-        response = await self._request("GET", f"api/events/{event_id}/seats/")
+        response = await self._request(
+            "GET",
+            self._endpoint("api", "events", event_id, "seats"),
+            absolute=True,
+        )
         return ProviderSeatsSchema.model_validate(response.json())
 
     async def register(
@@ -105,7 +115,8 @@ class EventsProviderClient:
     ) -> ProviderRegisterResponseSchema:
         response = await self._request(
             "POST",
-            f"api/events/{event_id}/register/",
+            self._endpoint("api", "events", event_id, "register"),
+            absolute=True,
             json=payload.model_dump(mode="json"),
         )
         return ProviderRegisterResponseSchema.model_validate(response.json())
@@ -117,7 +128,8 @@ class EventsProviderClient:
     ) -> ProviderUnregisterResponseSchema:
         response = await self._request(
             "DELETE",
-            f"api/events/{event_id}/unregister/",
+            self._endpoint("api", "events", event_id, "unregister"),
+            absolute=True,
             json={"ticket_id": str(ticket_id)},
         )
         return ProviderUnregisterResponseSchema.model_validate(response.json())

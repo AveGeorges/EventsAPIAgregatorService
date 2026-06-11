@@ -3,12 +3,17 @@ from uuid import UUID
 import httpx
 import pytest
 
+from app.core.url_utils import join_url
 from app.integrations.events_provider.client import EventsProviderClient
 
 EVENT_ID = UUID("550e8400-e29b-41d4-a716-446655440000")
 PLACE_ID = UUID("650e8400-e29b-41d4-a716-446655440001")
 TICKET_ID = UUID("750e8400-e29b-41d4-a716-446655440002")
 BASE_URL = "http://provider.test/"
+
+
+def provider_url(*parts: str) -> str:
+    return join_url(BASE_URL, *parts, trailing_slash=True)
 
 
 def sample_place_payload() -> dict:

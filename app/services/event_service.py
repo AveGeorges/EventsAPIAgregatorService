@@ -1,9 +1,9 @@
 from datetime import date
-from urllib.parse import urlencode
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.url_utils import append_query
 from app.domain.exceptions import EventNotFound
 from app.repositories.event_repository import EventRepository
 from app.schemas.event import EventDetailSchema, EventListItemSchema, EventsPageResponseSchema
@@ -19,8 +19,7 @@ def _build_page_url(
     query: dict[str, str | int] = {"page": page, "page_size": page_size}
     if date_from is not None:
         query["date_from"] = date_from.isoformat()
-    separator = "&" if "?" in base_url else "?"
-    return f"{base_url}{separator}{urlencode(query)}"
+    return append_query(base_url, query)
 
 
 class EventService:

@@ -8,7 +8,7 @@ from httpx import AsyncClient, Response
 from app.domain.exceptions import EventNotFound
 from app.schemas.seats import SeatsResponseSchema
 from app.services.seats_service import SeatsService
-from tests.integrations.events_provider.conftest import BASE_URL, EVENT_ID
+from tests.integrations.events_provider.conftest import EVENT_ID, provider_url
 from tests.test_events_api import seed_event
 
 
@@ -50,7 +50,7 @@ async def test_get_event_seats_fetches_from_provider(client: AsyncClient, db_ses
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
-        route = respx.get(f"{BASE_URL}api/events/{EVENT_ID}/seats/").mock(
+        route = respx.get(provider_url("api", "events", EVENT_ID, "seats")).mock(
             return_value=Response(
                 200,
                 json={"seats": ["A1", "A2"]},
@@ -70,7 +70,7 @@ async def test_get_event_seats_uses_cache_on_second_request(client: AsyncClient,
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
-        route = respx.get(f"{BASE_URL}api/events/{EVENT_ID}/seats/").mock(
+        route = respx.get(provider_url("api", "events", EVENT_ID, "seats")).mock(
             return_value=Response(
                 200,
                 json={"seats": ["A1"]},
