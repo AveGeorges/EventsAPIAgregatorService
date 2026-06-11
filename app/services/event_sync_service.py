@@ -22,31 +22,39 @@ class SyncResult:
     last_changed_at: datetime | None
 
 
+def _resolve_changed_at(sync_state: SyncState) -> date:
+    if sync_state.last_changed_at is None:
+        return INITIAL_CHANGED_AT
+    return sync_state.last_changed_at.date()
+
+
 class EventSyncService:
     def __init__(self, session: AsyncSession, provider_client: EventsProviderClient) -> None:
         self._session = session
         self._provider_client = provider_client
+        self._sync_state_repo = SyncStateRepository(session)
+        self._place_repo = PlaceRepository(session)
+        self._event_repo = EventRepository(session)
 
     async def run_sync(self) -> SyncResult:
-        sync_state = await SyncStateRepository.get_or_create(self._session)
-        changed_at = self._resolve_changed_at(sync_state)
+        sync_state = await self._sync_state_repo.get_or_create()
+        changed_at = _resolve_changed_at(sync_state)
 
         try:
-            await SyncStateRepository.mark_running(self._session, sync_state)
+            await self._sync_state_repo.mark_running(sync_state)
             logger.info("Event sync started", extra={"changed_at": changed_at.isoformat()})
 
             events_synced = 0
             max_changed_at: datetime | None = None
 
             async for provider_event in self._provider_client.iter_all_events(changed_at):
-                await PlaceRepository.upsert(self._session, provider_event.place)
-                await EventRepository.upsert(self._session, provider_event)
+                await self._place_repo.upsert(provider_event.place)
+                await self._event_repo.upsert(provider_event)
                 if max_changed_at is None or provider_event.changed_at > max_changed_at:
                     max_changed_at = provider_event.changed_at
                 events_synced += 1
 
-            await SyncStateRepository.mark_success(
-                self._session,
+            await self._sync_state_repo.mark_success(
                 sync_state,
                 last_changed_at=max_changed_at,
             )
@@ -67,13 +75,7 @@ class EventSyncService:
         except Exception as exc:
             await self._session.rollback()
             logger.exception("Event sync failed")
-            sync_state = await SyncStateRepository.get_or_create(self._session)
-            await SyncStateRepository.mark_failed(self._session, sync_state, str(exc))
+            sync_state = await self._sync_state_repo.get_or_create()
+            await self._sync_state_repo.mark_failed(sync_state, str(exc))
             await self._session.commit()
             raise
-
-    @staticmethod
-    def _resolve_changed_at(sync_state: SyncState) -> date:
-        if sync_state.last_changed_at is None:
-            return INITIAL_CHANGED_AT
-        return sync_state.last_changed_at.date()

@@ -122,8 +122,8 @@ async def seed_event(
         payload["id"] = str(event_id)
     payload["event_time"] = event_time
     event = ProviderEventSchema.model_validate(payload)
-    await PlaceRepository.upsert(db_session, event.place)
-    await EventRepository.upsert(db_session, event)
+    await PlaceRepository(db_session).upsert(event.place)
+    await EventRepository(db_session).upsert(event)
     await db_session.commit()
     return event
 

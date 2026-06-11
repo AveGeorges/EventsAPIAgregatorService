@@ -50,7 +50,7 @@ async def test_create_ticket_http_returns_service_response(
     assert body["ticket_id"] == str(TICKET_ID)
     assert body["seat"] == "A15"
     mock_create_ticket.assert_awaited_once()
-    assert mock_create_ticket.await_args.args[1] == TicketCreateSchema.model_validate(
+    assert mock_create_ticket.await_args.args[0] == TicketCreateSchema.model_validate(
         sample_create_body()
     )
 
@@ -98,7 +98,7 @@ async def test_create_ticket_registers_with_provider_and_persists(
     client: AsyncClient,
     db_session,
 ):
-    SeatsService.invalidate(EVENT_ID)
+    SeatsService(db_session).invalidate(EVENT_ID)
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
@@ -120,7 +120,7 @@ async def test_create_ticket_registers_with_provider_and_persists(
 
 @pytest.mark.asyncio
 async def test_create_ticket_invalidates_seats_cache(client: AsyncClient, db_session):
-    SeatsService.invalidate(EVENT_ID)
+    SeatsService(db_session).invalidate(EVENT_ID)
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
@@ -146,7 +146,7 @@ async def test_cancel_ticket_unregisters_and_removes_local_record(
     client: AsyncClient,
     db_session,
 ):
-    SeatsService.invalidate(EVENT_ID)
+    SeatsService(db_session).invalidate(EVENT_ID)
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:

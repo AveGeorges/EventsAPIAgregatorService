@@ -6,8 +6,10 @@ from app.models.models import Place
 
 
 class PlaceRepository:
-    @staticmethod
-    async def upsert(session: AsyncSession, place: ProviderPlaceSchema) -> None:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def upsert(self, place: ProviderPlaceSchema) -> None:
         values = {
             "id": place.id,
             "name": place.name,
@@ -27,4 +29,4 @@ class PlaceRepository:
                 "changed_at": place.changed_at,
             },
         )
-        await session.execute(stmt)
+        await self._session.execute(stmt)

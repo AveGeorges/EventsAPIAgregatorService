@@ -24,6 +24,27 @@ from app.integrations.events_provider.schemas import (
 )
 
 
+def _extract_error_message(response: httpx.Response) -> str:
+    content_type = response.headers.get("content-type", "")
+    if "application/json" in content_type:
+        try:
+            payload = response.json()
+        except ValueError:
+            return response.text or f"HTTP {response.status_code}"
+        if isinstance(payload, dict):
+            detail = payload.get("detail")
+            if isinstance(detail, str):
+                return detail
+            if isinstance(detail, dict):
+                return str(detail.get("message") or detail)
+        return str(payload)
+
+    text = response.text.strip()
+    if text:
+        return text[:500]
+    return f"HTTP {response.status_code}"
+
+
 class EventsProviderClient:
     """Async HTTP-клиент Events Provider API."""
 
@@ -135,7 +156,7 @@ class EventsProviderClient:
             return
 
         status_code = response.status_code
-        message = self._extract_error_message(response)
+        message = _extract_error_message(response)
 
         if status_code == 401:
             raise EventsProviderAuthError(message, status_code=status_code)
@@ -149,27 +170,6 @@ class EventsProviderClient:
             raise EventsProviderServerError(message, status_code=status_code)
 
         raise EventsProviderError(message, status_code=status_code)
-
-    @staticmethod
-    def _extract_error_message(response: httpx.Response) -> str:
-        content_type = response.headers.get("content-type", "")
-        if "application/json" in content_type:
-            try:
-                payload = response.json()
-            except ValueError:
-                return response.text or f"HTTP {response.status_code}"
-            if isinstance(payload, dict):
-                detail = payload.get("detail")
-                if isinstance(detail, str):
-                    return detail
-                if isinstance(detail, dict):
-                    return str(detail.get("message") or detail)
-            return str(payload)
-
-        text = response.text.strip()
-        if text:
-            return text[:500]
-        return f"HTTP {response.status_code}"
 
 
 def create_events_provider_client(

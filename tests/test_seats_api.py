@@ -46,7 +46,7 @@ async def test_get_event_seats_http_returns_404(mock_get_seats, http_client: Asy
 
 @pytest.mark.asyncio
 async def test_get_event_seats_fetches_from_provider(client: AsyncClient, db_session):
-    SeatsService.invalidate(EVENT_ID)
+    SeatsService(db_session).invalidate(EVENT_ID)
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:
@@ -66,7 +66,7 @@ async def test_get_event_seats_fetches_from_provider(client: AsyncClient, db_ses
 
 @pytest.mark.asyncio
 async def test_get_event_seats_uses_cache_on_second_request(client: AsyncClient, db_session):
-    SeatsService.invalidate(EVENT_ID)
+    SeatsService(db_session).invalidate(EVENT_ID)
     await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
 
     with respx.mock:

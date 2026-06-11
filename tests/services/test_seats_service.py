@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 
 import pytest
@@ -17,59 +17,50 @@ def sample_provider_seats() -> ProviderSeatsSchema:
 
 
 @pytest.mark.asyncio
-@patch("app.services.seats_service.EventRepository.get_by_id", new_callable=AsyncMock)
-async def test_get_seats_raises_not_found_when_event_missing(mock_get_by_id):
-    mock_get_by_id.return_value = None
-    provider_client = AsyncMock()
+async def test_get_seats_raises_not_found_when_event_missing():
     session = AsyncMock()
+    provider_client = AsyncMock()
+    cache = SeatsCache()
+    service = SeatsService(session, provider_client=provider_client, cache=cache)
+    service._event_repo = MagicMock()
+    service._event_repo.get_by_id = AsyncMock(return_value=None)
 
     with pytest.raises(EventNotFound):
-        await SeatsService.get_seats(
-            session,
-            EVENT_ID,
-            provider_client=provider_client,
-            cache=SeatsCache(),
-        )
+        await service.get_seats(EVENT_ID)
 
     provider_client.get_seats.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-@patch("app.services.seats_service.EventRepository.get_by_id", new_callable=AsyncMock)
-async def test_get_seats_returns_cached_value_without_provider_call(mock_get_by_id):
-    mock_get_by_id.return_value = MagicMock()
+async def test_get_seats_returns_cached_value_without_provider_call():
     provider_client = AsyncMock()
     session = AsyncMock()
     cache = SeatsCache()
     cached = SeatsResponseSchema(event_id=EVENT_ID, available_seats=["B1"])
     cache.set(EVENT_ID, cached)
 
-    result = await SeatsService.get_seats(
-        session,
-        EVENT_ID,
-        provider_client=provider_client,
-        cache=cache,
-    )
+    service = SeatsService(session, provider_client=provider_client, cache=cache)
+    service._event_repo = MagicMock()
+    service._event_repo.get_by_id = AsyncMock(return_value=MagicMock())
+
+    result = await service.get_seats(EVENT_ID)
 
     assert result == cached
     provider_client.get_seats.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-@patch("app.services.seats_service.EventRepository.get_by_id", new_callable=AsyncMock)
-async def test_get_seats_fetches_from_provider_and_caches(mock_get_by_id):
-    mock_get_by_id.return_value = MagicMock()
+async def test_get_seats_fetches_from_provider_and_caches():
     provider_client = AsyncMock()
     provider_client.get_seats.return_value = sample_provider_seats()
     session = AsyncMock()
     cache = SeatsCache()
 
-    result = await SeatsService.get_seats(
-        session,
-        EVENT_ID,
-        provider_client=provider_client,
-        cache=cache,
-    )
+    service = SeatsService(session, provider_client=provider_client, cache=cache)
+    service._event_repo = MagicMock()
+    service._event_repo.get_by_id = AsyncMock(return_value=MagicMock())
+
+    result = await service.get_seats(EVENT_ID)
 
     assert result.event_id == EVENT_ID
     assert result.available_seats == ["A1", "A2"]
@@ -84,6 +75,7 @@ def test_invalidate_clears_cache_entry():
         SeatsResponseSchema(event_id=EVENT_ID, available_seats=["A1"]),
     )
 
-    SeatsService.invalidate(EVENT_ID, cache=cache)
+    service = SeatsService(MagicMock(), cache=cache)
+    service.invalidate(EVENT_ID)
 
     assert cache.get(EVENT_ID) is None

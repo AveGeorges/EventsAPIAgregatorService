@@ -22,7 +22,7 @@ async def create_ticket(
 ) -> TicketResponseSchema:
     provider_client = create_events_provider_client()
     try:
-        return await TicketService.create_ticket(db, payload, provider_client=provider_client)
+        return await TicketService(db, provider_client).create_ticket(payload)
     finally:
         await provider_client.aclose()
 
@@ -34,6 +34,6 @@ async def cancel_ticket(
 ) -> TicketCancelResponseSchema:
     provider_client = create_events_provider_client()
     try:
-        return await TicketService.cancel_ticket(db, ticket_id, provider_client=provider_client)
+        return await TicketService(db, provider_client).cancel_ticket(ticket_id)
     finally:
         await provider_client.aclose()

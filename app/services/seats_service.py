@@ -13,34 +13,39 @@ from app.services.seats_cache import SeatsCache
 _default_cache = SeatsCache(ttl_seconds=settings.SEATS_CACHE_TTL_SECONDS)
 
 
-class SeatsService:
-    @staticmethod
-    async def get_seats(
-        session: AsyncSession,
-        event_id: UUID,
-        *,
-        provider_client: EventsProviderClient,
-        cache: SeatsCache | None = None,
-    ) -> SeatsResponseSchema:
-        seats_cache = cache or _default_cache
+def _to_seats_response(event_id: UUID, provider_seats: ProviderSeatsSchema) -> SeatsResponseSchema:
+    return SeatsResponseSchema(event_id=event_id, available_seats=provider_seats.seats)
 
-        event = await EventRepository.get_by_id(session, event_id)
+
+class SeatsService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        *,
+        provider_client: EventsProviderClient | None = None,
+        cache: SeatsCache | None = None,
+    ) -> None:
+        self._session = session
+        self._provider_client = provider_client
+        self._cache = cache or _default_cache
+        self._event_repo = EventRepository(session)
+
+    async def get_seats(self, event_id: UUID) -> SeatsResponseSchema:
+        if self._provider_client is None:
+            raise RuntimeError("provider_client is required for get_seats")
+
+        event = await self._event_repo.get_by_id(event_id)
         if event is None:
             raise EventNotFound(event_id)
 
-        cached = seats_cache.get(event_id)
+        cached = self._cache.get(event_id)
         if cached is not None:
             return cached
 
-        provider_seats = await provider_client.get_seats(event_id)
-        result = SeatsService._to_response(event_id, provider_seats)
-        seats_cache.set(event_id, result)
+        provider_seats = await self._provider_client.get_seats(event_id)
+        result = _to_seats_response(event_id, provider_seats)
+        self._cache.set(event_id, result)
         return result
 
-    @staticmethod
-    def invalidate(event_id: UUID, *, cache: SeatsCache | None = None) -> None:
-        (cache or _default_cache).invalidate(event_id)
-
-    @staticmethod
-    def _to_response(event_id: UUID, provider_seats: ProviderSeatsSchema) -> SeatsResponseSchema:
-        return SeatsResponseSchema(event_id=event_id, available_seats=provider_seats.seats)
+    def invalidate(self, event_id: UUID) -> None:
+        self._cache.invalidate(event_id)

@@ -14,6 +14,10 @@ async def trigger_sync(db: AsyncSession = Depends(get_db)) -> SyncTriggerRespons
     provider_client = create_events_provider_client()
     try:
         result = await run_sync_with_lock(db, provider_client)
-        return SyncTriggerResponse.from_result(result)
+        return SyncTriggerResponse(
+            events_synced=result.events_synced,
+            changed_at=result.changed_at,
+            last_changed_at=result.last_changed_at,
+        )
     finally:
         await provider_client.aclose()

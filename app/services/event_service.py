@@ -9,10 +9,27 @@ from app.repositories.event_repository import EventRepository
 from app.schemas.event import EventDetailSchema, EventListItemSchema, EventsPageResponseSchema
 
 
+def _build_page_url(
+    base_url: str,
+    *,
+    page: int,
+    page_size: int,
+    date_from: date | None,
+) -> str:
+    query: dict[str, str | int] = {"page": page, "page_size": page_size}
+    if date_from is not None:
+        query["date_from"] = date_from.isoformat()
+    separator = "&" if "?" in base_url else "?"
+    return f"{base_url}{separator}{urlencode(query)}"
+
+
 class EventService:
-    @staticmethod
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+        self._event_repo = EventRepository(session)
+
     async def list_events(
-        session: AsyncSession,
+        self,
         *,
         events_base_url: str,
         date_from: date | None = None,
@@ -25,9 +42,8 @@ class EventService:
             page_size = 20
 
         offset = (page - 1) * page_size
-        total = await EventRepository.count(session, date_from=date_from)
-        events = await EventRepository.list_page(
-            session,
+        total = await self._event_repo.count(date_from=date_from)
+        events = await self._event_repo.list_page(
             date_from=date_from,
             offset=offset,
             limit=page_size,
@@ -35,7 +51,7 @@ class EventService:
 
         next_url = None
         if page * page_size < total:
-            next_url = EventService._build_page_url(
+            next_url = _build_page_url(
                 events_base_url,
                 page=page + 1,
                 page_size=page_size,
@@ -44,7 +60,7 @@ class EventService:
 
         previous_url = None
         if page > 1:
-            previous_url = EventService._build_page_url(
+            previous_url = _build_page_url(
                 events_base_url,
                 page=page - 1,
                 page_size=page_size,
@@ -58,23 +74,8 @@ class EventService:
             results=[EventListItemSchema.model_validate(event) for event in events],
         )
 
-    @staticmethod
-    async def get_event(session: AsyncSession, event_id: UUID) -> EventDetailSchema:
-        event = await EventRepository.get_by_id(session, event_id)
+    async def get_event(self, event_id: UUID) -> EventDetailSchema:
+        event = await self._event_repo.get_by_id(event_id)
         if event is None:
             raise EventNotFound(event_id)
         return EventDetailSchema.model_validate(event)
-
-    @staticmethod
-    def _build_page_url(
-        base_url: str,
-        *,
-        page: int,
-        page_size: int,
-        date_from: date | None,
-    ) -> str:
-        query: dict[str, str | int] = {"page": page, "page_size": page_size}
-        if date_from is not None:
-            query["date_from"] = date_from.isoformat()
-        separator = "&" if "?" in base_url else "?"
-        return f"{base_url}{separator}{urlencode(query)}"

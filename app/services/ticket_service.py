@@ -12,14 +12,21 @@ from app.services.seats_service import SeatsService
 
 
 class TicketService:
-    @staticmethod
-    async def create_ticket(
+    def __init__(
+        self,
         session: AsyncSession,
-        payload: TicketCreateSchema,
-        *,
         provider_client: EventsProviderClient,
-    ) -> TicketResponseSchema:
-        event = await EventRepository.get_by_id(session, payload.event_id)
+        *,
+        seats_service: SeatsService | None = None,
+    ) -> None:
+        self._session = session
+        self._provider_client = provider_client
+        self._event_repo = EventRepository(session)
+        self._ticket_repo = TicketRepository(session)
+        self._seats_service = seats_service or SeatsService(session)
+
+    async def create_ticket(self, payload: TicketCreateSchema) -> TicketResponseSchema:
+        event = await self._event_repo.get_by_id(payload.event_id)
         if event is None:
             raise EventNotFound(payload.event_id)
 
@@ -29,10 +36,9 @@ class TicketService:
             email=str(payload.email),
             seat=payload.seat,
         )
-        provider_response = await provider_client.register(payload.event_id, provider_payload)
+        provider_response = await self._provider_client.register(payload.event_id, provider_payload)
 
-        await TicketRepository.upsert(
-            session,
+        await self._ticket_repo.upsert(
             ticket_id=provider_response.ticket_id,
             event_id=payload.event_id,
             seat=payload.seat,
@@ -40,8 +46,8 @@ class TicketService:
             last_name=payload.last_name,
             email=str(payload.email),
         )
-        SeatsService.invalidate(payload.event_id)
-        await session.commit()
+        self._seats_service.invalidate(payload.event_id)
+        await self._session.commit()
 
         return TicketResponseSchema(
             ticket_id=provider_response.ticket_id,
@@ -52,19 +58,13 @@ class TicketService:
             email=payload.email,
         )
 
-    @staticmethod
-    async def cancel_ticket(
-        session: AsyncSession,
-        ticket_id: UUID,
-        *,
-        provider_client: EventsProviderClient,
-    ) -> TicketCancelResponseSchema:
-        ticket = await TicketRepository.get_by_ticket_id(session, ticket_id)
+    async def cancel_ticket(self, ticket_id: UUID) -> TicketCancelResponseSchema:
+        ticket = await self._ticket_repo.get_by_ticket_id(ticket_id)
         if ticket is None:
             raise TicketNotFound(ticket_id)
 
-        provider_response = await provider_client.unregister(ticket.event_id, ticket_id)
-        await TicketRepository.delete(session, ticket_id)
-        SeatsService.invalidate(ticket.event_id)
-        await session.commit()
+        provider_response = await self._provider_client.unregister(ticket.event_id, ticket_id)
+        await self._ticket_repo.delete(ticket_id)
+        self._seats_service.invalidate(ticket.event_id)
+        await self._session.commit()
         return TicketCancelResponseSchema(success=provider_response.success)

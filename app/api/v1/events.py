@@ -23,8 +23,7 @@ async def list_events(
     page_size: int = Query(default=20, ge=1),
 ) -> EventsPageResponseSchema:
     events_base_url = str(request.url.replace(query=""))
-    return await EventService.list_events(
-        db,
+    return await EventService(db).list_events(
         events_base_url=events_base_url,
         date_from=date_from,
         page=page,
@@ -39,11 +38,7 @@ async def get_event_seats(
 ) -> SeatsResponseSchema:
     provider_client = create_events_provider_client()
     try:
-        return await SeatsService.get_seats(
-            db,
-            event_id,
-            provider_client=provider_client,
-        )
+        return await SeatsService(db, provider_client=provider_client).get_seats(event_id)
     finally:
         await provider_client.aclose()
 
@@ -53,4 +48,4 @@ async def get_event(
     event_id: UUID,
     db: AsyncSession = Depends(get_db),
 ) -> EventDetailSchema:
-    return await EventService.get_event(db, event_id)
+    return await EventService(db).get_event(event_id)

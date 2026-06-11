@@ -10,9 +10,15 @@ from app.integrations.events_provider.schemas import ProviderEventSchema
 from app.models.models import Event
 
 
+def _start_of_day(value: date) -> datetime:
+    return datetime.combine(value, datetime.min.time(), tzinfo=timezone.utc)
+
+
 class EventRepository:
-    @staticmethod
-    async def upsert(session: AsyncSession, event: ProviderEventSchema) -> None:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def upsert(self, event: ProviderEventSchema) -> None:
         values = {
             "id": event.id,
             "name": event.name,
@@ -38,19 +44,17 @@ class EventRepository:
                 "status_changed_at": event.status_changed_at,
             },
         )
-        await session.execute(stmt)
+        await self._session.execute(stmt)
 
-    @staticmethod
-    async def count(session: AsyncSession, *, date_from: date | None = None) -> int:
+    async def count(self, *, date_from: date | None = None) -> int:
         stmt = select(func.count()).select_from(Event)
         if date_from is not None:
-            stmt = stmt.where(Event.event_time >= EventRepository._start_of_day(date_from))
-        result = await session.execute(stmt)
+            stmt = stmt.where(Event.event_time >= _start_of_day(date_from))
+        result = await self._session.execute(stmt)
         return result.scalar_one()
 
-    @staticmethod
     async def list_page(
-        session: AsyncSession,
+        self,
         *,
         date_from: date | None = None,
         offset: int = 0,
@@ -64,20 +68,15 @@ class EventRepository:
             .limit(limit)
         )
         if date_from is not None:
-            stmt = stmt.where(Event.event_time >= EventRepository._start_of_day(date_from))
-        result = await session.execute(stmt)
+            stmt = stmt.where(Event.event_time >= _start_of_day(date_from))
+        result = await self._session.execute(stmt)
         return list(result.scalars().unique().all())
 
-    @staticmethod
-    async def get_by_id(session: AsyncSession, event_id: UUID) -> Event | None:
+    async def get_by_id(self, event_id: UUID) -> Event | None:
         stmt = (
             select(Event)
             .options(joinedload(Event.place))
             .where(Event.id == event_id)
         )
-        result = await session.execute(stmt)
+        result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
-
-    @staticmethod
-    def _start_of_day(value: date) -> datetime:
-        return datetime.combine(value, datetime.min.time(), tzinfo=timezone.utc)

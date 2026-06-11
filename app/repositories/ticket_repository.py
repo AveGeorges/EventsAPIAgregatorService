@@ -9,9 +9,11 @@ from app.models.models import Ticket
 
 
 class TicketRepository:
-    @staticmethod
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
     async def upsert(
-        session: AsyncSession,
+        self,
         *,
         ticket_id: UUID,
         event_id: UUID,
@@ -40,15 +42,13 @@ class TicketRepository:
                 "created_at": created_at,
             },
         )
-        await session.execute(stmt)
+        await self._session.execute(stmt)
 
-    @staticmethod
-    async def get_by_ticket_id(session: AsyncSession, ticket_id: UUID) -> Ticket | None:
+    async def get_by_ticket_id(self, ticket_id: UUID) -> Ticket | None:
         stmt = select(Ticket).where(Ticket.ticket_id == ticket_id)
-        result = await session.execute(stmt)
+        result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    @staticmethod
-    async def delete(session: AsyncSession, ticket_id: UUID) -> None:
+    async def delete(self, ticket_id: UUID) -> None:
         stmt = delete(Ticket).where(Ticket.ticket_id == ticket_id)
-        await session.execute(stmt)
+        await self._session.execute(stmt)
