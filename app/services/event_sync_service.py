@@ -47,7 +47,7 @@ class EventSyncService:
             events_synced = 0
             max_changed_at: datetime | None = None
 
-            async for provider_event in self._provider_client.iter_all_events(changed_at):
+            async for provider_event in self._provider_client.paginate_events(changed_at):
                 await self._place_repo.upsert(provider_event.place)
                 await self._event_repo.upsert(provider_event)
                 if max_changed_at is None or provider_event.changed_at > max_changed_at:

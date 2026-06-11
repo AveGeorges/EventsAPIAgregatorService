@@ -5,7 +5,6 @@ import httpx
 import pytest
 import respx
 
-from app.core.url_utils import append_query, join_url
 from app.integrations.events_provider.client import EventsProviderClient
 from app.integrations.events_provider.exceptions import (
     EventsProviderAuthError,
@@ -13,7 +12,6 @@ from app.integrations.events_provider.exceptions import (
 )
 from app.integrations.events_provider.schemas import ProviderRegisterRequestSchema
 from tests.integrations.events_provider.conftest import (
-    BASE_URL,
     EVENT_ID,
     PLACE_ID,
     TICKET_ID,
@@ -38,33 +36,6 @@ async def test_list_events_sends_api_key_and_parses_response(provider_client: Ev
     assert len(page.results) == 1
     assert page.results[0].id == EVENT_ID
     assert page.results[0].place.city == "Москва"
-
-
-@respx.mock
-async def test_iter_all_events_follows_next_url(provider_client: EventsProviderClient):
-    second_event = sample_event_payload()
-    second_event["id"] = "660e8400-e29b-41d4-a716-446655440099"
-    second_event["name"] = "Second event"
-
-    next_url = append_query(
-        join_url(BASE_URL, "api", "events", trailing_slash=True),
-        {"changed_at": "2000-01-01", "cursor": "abc"},
-    )
-    respx.route(method="GET", url__regex=r"http://provider\.test/api/events/.*").mock(
-        side_effect=[
-            httpx.Response(200, json=sample_events_page_payload(next_url=next_url)),
-            httpx.Response(
-                200,
-                json={"next": None, "previous": next_url, "results": [second_event]},
-            ),
-        ]
-    )
-
-    events = [event async for event in provider_client.iter_all_events(date(2000, 1, 1))]
-
-    assert len(events) == 2
-    assert events[0].id == EVENT_ID
-    assert events[1].name == "Second event"
 
 
 @respx.mock

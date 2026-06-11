@@ -1,23 +1,38 @@
-from collections.abc import AsyncIterator
 from datetime import date, datetime, timezone
 
 import pytest
 from sqlalchemy import select
 
 from app.domain.enums import SyncStatus
+from app.integrations.events_provider.paginator import EventsPaginator
 from app.integrations.events_provider.schemas import ProviderEventSchema
 from app.models.models import Event, Place, SyncState
 from app.services.event_sync_service import INITIAL_CHANGED_AT, EventSyncService
 from tests.integrations.events_provider.conftest import sample_event_payload
 
 
+class FakeEventsPaginator(EventsPaginator):
+    def __init__(self, events: list[ProviderEventSchema]) -> None:
+        self._events = events
+        self._index = 0
+
+    def __aiter__(self) -> "FakeEventsPaginator":
+        return self
+
+    async def __anext__(self) -> ProviderEventSchema:
+        if self._index >= len(self._events):
+            raise StopAsyncIteration
+        event = self._events[self._index]
+        self._index += 1
+        return event
+
+
 class FakeEventsProviderClient:
     def __init__(self, events: list[ProviderEventSchema]) -> None:
         self._events = events
 
-    async def iter_all_events(self, changed_at: date) -> AsyncIterator[ProviderEventSchema]:
-        for event in self._events:
-            yield event
+    def paginate_events(self, changed_at: date) -> FakeEventsPaginator:
+        return FakeEventsPaginator(self._events)
 
     async def aclose(self) -> None:
         return None

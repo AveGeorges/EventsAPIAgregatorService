@@ -1,4 +1,3 @@
-from collections.abc import AsyncIterator
 from datetime import date
 from typing import Any
 from uuid import UUID
@@ -15,6 +14,7 @@ from app.integrations.events_provider.exceptions import (
     EventsProviderRateLimitError,
     EventsProviderServerError,
 )
+from app.integrations.events_provider.paginator import EventsPaginator
 from app.integrations.events_provider.schemas import (
     ProviderEventSchema,
     ProviderEventsPageSchema,
@@ -134,17 +134,8 @@ class EventsProviderClient:
         )
         return ProviderUnregisterResponseSchema.model_validate(response.json())
 
-    async def iter_all_events(self, changed_at: date) -> AsyncIterator[ProviderEventSchema]:
-        page = await self.list_events(changed_at)
-        for event in page.results:
-            yield event
-
-        next_url = page.next
-        while next_url:
-            page = await self.list_events(changed_at, page_url=next_url)
-            for event in page.results:
-                yield event
-            next_url = page.next
+    def paginate_events(self, changed_at: date) -> EventsPaginator:
+        return EventsPaginator(self, changed_at)
 
     async def _request(
         self,
