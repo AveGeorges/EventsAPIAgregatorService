@@ -18,3 +18,10 @@ def test_append_query_builds_pagination_url():
     base = "http://test/api/events"
     url = append_query(base, {"page": 2, "page_size": 20, "date_from": "2026-06-06"})
     assert url == "http://test/api/events?page=2&page_size=20&date_from=2026-06-06"
+
+
+def test_append_query_merges_with_existing_query_params():
+    base = "http://test/api/events?page=1&page_size=20"
+    url = append_query(base, {"page": 2, "date_from": "2026-06-06"})
+
+    assert url == "http://test/api/events?page=2&page_size=20&date_from=2026-06-06"

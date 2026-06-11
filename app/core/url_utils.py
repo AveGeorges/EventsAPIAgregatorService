@@ -1,4 +1,4 @@
-from urllib.parse import urlencode, urljoin
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 
 def normalize_base_url(url: str) -> str:
@@ -16,10 +16,11 @@ def join_url(base: str, *parts: str, trailing_slash: bool = False) -> str:
 
 
 def append_query(base_url: str, query: dict[str, str | int]) -> str:
-    """Добавляет query-параметры к URL через urljoin."""
+    """Добавляет query-параметры к URL"""
     if not query:
         return base_url
-    query_string = urlencode(query)
-    if "?" in base_url:
-        return urljoin(base_url, f"&{query_string}")
-    return urljoin(base_url, f"?{query_string}")
+
+    parsed = urlparse(base_url)
+    merged = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    merged.update({key: str(value) for key, value in query.items()})
+    return urlunparse(parsed._replace(query=urlencode(merged)))
