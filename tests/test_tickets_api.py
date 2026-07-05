@@ -7,7 +7,7 @@ from httpx import AsyncClient, Response
 from sqlalchemy import select
 
 from app.domain.exceptions import EventNotFound, TicketNotFound
-from app.models.models import Ticket
+from app.models.models import Idempotency, Outbox, Ticket
 from app.schemas.ticket import TicketCreateSchema, TicketResponseSchema
 from app.services.seats_service import SeatsService
 from app.services.ticket_service import TicketService
@@ -170,6 +170,88 @@ async def test_cancel_ticket_unregisters_and_removes_local_record(
 
     result = await db_session.execute(select(Ticket).where(Ticket.ticket_id == TICKET_ID))
     assert result.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_cancel_ticket_removes_idempotency_and_outbox(
+    client: AsyncClient,
+    db_session,
+):
+    SeatsService(db_session).invalidate(EVENT_ID)
+    await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
+    idempotency_key = "cancel-cleanup-key"
+
+    with respx.mock:
+        respx.post(provider_url("api", "events", EVENT_ID, "register")).mock(
+            return_value=Response(201, json={"ticket_id": str(TICKET_ID)})
+        )
+        create_response = await client.post(
+            "/api/tickets",
+            json={**sample_create_body(), "idempotency_key": idempotency_key},
+        )
+        assert create_response.status_code == 201
+
+        idempotency_result = await db_session.execute(
+            select(Idempotency).where(Idempotency.idempotency_key == idempotency_key)
+        )
+        assert idempotency_result.scalar_one_or_none() is not None
+
+        outbox_result = await db_session.execute(select(Outbox).where(Outbox.id == TICKET_ID))
+        assert outbox_result.scalar_one_or_none() is not None
+
+        respx.delete(provider_url("api", "events", EVENT_ID, "unregister")).mock(
+            return_value=Response(200, json={"success": True})
+        )
+
+        response = await client.delete(f"/api/tickets/{TICKET_ID}")
+
+    assert response.status_code == 200
+    assert response.json() == {"success": True}
+
+    ticket_result = await db_session.execute(select(Ticket).where(Ticket.ticket_id == TICKET_ID))
+    assert ticket_result.scalar_one_or_none() is None
+
+    idempotency_result = await db_session.execute(
+        select(Idempotency).where(Idempotency.idempotency_key == idempotency_key)
+    )
+    assert idempotency_result.scalar_one_or_none() is None
+
+    outbox_result = await db_session.execute(select(Outbox).where(Outbox.id == TICKET_ID))
+    assert outbox_result.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_after_cancel_succeeds(
+    client: AsyncClient,
+    db_session,
+):
+    SeatsService(db_session).invalidate(EVENT_ID)
+    await seed_event(db_session, event_time="2026-06-07T17:00:00+00:00")
+    idempotency_key = "recreate-after-cancel"
+
+    with respx.mock:
+        respx.post(provider_url("api", "events", EVENT_ID, "register")).mock(
+            return_value=Response(201, json={"ticket_id": str(TICKET_ID)})
+        )
+        first_create = await client.post(
+            "/api/tickets",
+            json={**sample_create_body(), "idempotency_key": idempotency_key},
+        )
+        assert first_create.status_code == 201
+
+        respx.delete(provider_url("api", "events", EVENT_ID, "unregister")).mock(
+            return_value=Response(200, json={"success": True})
+        )
+        cancel_response = await client.delete(f"/api/tickets/{TICKET_ID}")
+        assert cancel_response.status_code == 200
+
+        second_create = await client.post(
+            "/api/tickets",
+            json={**sample_create_body(), "idempotency_key": idempotency_key},
+        )
+
+    assert second_create.status_code == 201
+    assert second_create.json()["ticket_id"] == str(TICKET_ID)
 
 
 @pytest.mark.asyncio

@@ -106,6 +106,10 @@ async def test_cancel_ticket_unregisters_with_provider_and_deletes_locally():
     service._ticket_repo = MagicMock()
     service._ticket_repo.get_by_ticket_id = AsyncMock(return_value=ticket)
     service._ticket_repo.delete = AsyncMock()
+    service._idempotency_repo = MagicMock()
+    service._idempotency_repo.delete_by_ticket_id = AsyncMock()
+    service._outbox_repo = MagicMock()
+    service._outbox_repo.delete_by_id = AsyncMock()
     mock_seats_service = MagicMock(spec=SeatsService)
     service._seats_service = mock_seats_service
 
@@ -113,6 +117,8 @@ async def test_cancel_ticket_unregisters_with_provider_and_deletes_locally():
 
     assert result.success is True
     provider_client.unregister.assert_awaited_once_with(EVENT_ID, TICKET_ID)
+    service._idempotency_repo.delete_by_ticket_id.assert_awaited_once_with(TICKET_ID)
+    service._outbox_repo.delete_by_id.assert_awaited_once_with(TICKET_ID)
     service._ticket_repo.delete.assert_awaited_once_with(TICKET_ID)
     mock_seats_service.invalidate.assert_called_once_with(EVENT_ID)
     session.commit.assert_awaited_once()

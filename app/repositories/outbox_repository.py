@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,4 +43,8 @@ class OutboxRepository:
 
     async def mark_sent(self, outbox_id: UUID) -> None:
         stmt = update(Outbox).where(Outbox.id == outbox_id).values(status=OutboxEventStatus.SENT)
+        await self._session.execute(stmt)
+
+    async def delete_by_id(self, outbox_id: UUID) -> None:
+        stmt = delete(Outbox).where(Outbox.id == outbox_id)
         await self._session.execute(stmt)

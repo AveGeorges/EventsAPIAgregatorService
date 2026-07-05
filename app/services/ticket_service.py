@@ -110,6 +110,8 @@ class TicketService:
             raise TicketNotFound(ticket_id)
 
         provider_response = await self._provider_client.unregister(ticket.event_id, ticket_id)
+        await self._idempotency_repo.delete_by_ticket_id(ticket_id)
+        await self._outbox_repo.delete_by_id(ticket_id)
         await self._ticket_repo.delete(ticket_id)
         self._seats_service.invalidate(ticket.event_id)
         await self._session.commit()

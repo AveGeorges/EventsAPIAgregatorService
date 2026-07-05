@@ -127,13 +127,23 @@ class Outbox(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True)
     event_type = Column(
-        SQLAlchemyEnum(OutboxEventType, name="outbox_event_type", native_enum=False),
+        SQLAlchemyEnum(
+            OutboxEventType,
+            name="outbox_event_type",
+            native_enum=False,
+            values_callable=lambda enum: [member.value for member in enum],
+        ),
         nullable=False,
         default=OutboxEventType.TICKET_PURCHASED,
     )
     payload = Column(JSONB, nullable=False)
     status = Column(
-        SQLAlchemyEnum(OutboxEventStatus, name="outbox_event_status", native_enum=False),
+        SQLAlchemyEnum(
+            OutboxEventStatus,
+            name="outbox_event_status",
+            native_enum=False,
+            values_callable=lambda enum: [member.value for member in enum],
+        ),
         nullable=False,
         default=OutboxEventStatus.PENDING,
     )

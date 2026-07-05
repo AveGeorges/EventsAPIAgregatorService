@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,3 +33,7 @@ class IdempotencyRepository:
         stmt = select(Idempotency).where(Idempotency.idempotency_key == idempotency_key)
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def delete_by_ticket_id(self, ticket_id: UUID) -> None:
+        stmt = delete(Idempotency).where(Idempotency.ticket_id == ticket_id)
+        await self._session.execute(stmt)
