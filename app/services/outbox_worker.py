@@ -26,8 +26,11 @@ async def process_outbox_events(
     capashino_client: CapashinoClient,
     session: AsyncSession,
 ) -> None:
-    for row in await outbox_repo.list_pending():
-        payload = row.payload
+    pending = [
+        (row.id, dict(row.payload))
+        for row in await outbox_repo.list_pending()
+    ]
+    for outbox_id, payload in pending:
         try:
             await capashino_client.create_notification(
                 CapashinoNotificationCreateSchema(
@@ -36,14 +39,14 @@ async def process_outbox_events(
                     idempotency_key=payload["notification_idempotency_key"],
                 )
             )
-            await outbox_repo.mark_sent(outbox_id=row.id)
+            await outbox_repo.mark_sent(outbox_id=outbox_id)
             await session.commit()
         except CapashinoConflictError:
             logger.info(
                 "Capashino notification already exists",
-                extra={"outbox_id": str(row.id)},
+                extra={"outbox_id": str(outbox_id)},
             )
-            await outbox_repo.mark_sent(outbox_id=row.id)
+            await outbox_repo.mark_sent(outbox_id=outbox_id)
             await session.commit()
         except (
             CapashinoServerError,
@@ -55,13 +58,13 @@ async def process_outbox_events(
         ) as exc:
             logger.error(
                 "Capashino notification failed, will retry",
-                extra={"outbox_id": str(row.id), "error": exc.message},
+                extra={"outbox_id": str(outbox_id), "error": exc.message},
             )
             await session.rollback()
         except Exception:
             logger.exception(
                 "Unexpected outbox processing error",
-                extra={"outbox_id": str(row.id)},
+                extra={"outbox_id": str(outbox_id)},
             )
             await session.rollback()
 

@@ -8,15 +8,20 @@ from app.integrations.capashino.exceptions import CapashinoConflictError, Capash
 from app.services.outbox_worker import process_outbox_events, run_outbox_worker_loop
 
 OUTBOX_ID = UUID("750e8400-e29b-41d4-a716-446655440002")
+OUTBOX_ID_2 = UUID("850e8400-e29b-41d4-a716-446655440003")
 
 
-def make_pending_row() -> MagicMock:
+def make_pending_row(
+    outbox_id: UUID = OUTBOX_ID,
+    *,
+    idempotency_key: str = "ticket-key-1",
+) -> MagicMock:
     row = MagicMock()
-    row.id = OUTBOX_ID
+    row.id = outbox_id
     row.payload = {
-        "ticket_id": str(OUTBOX_ID),
+        "ticket_id": str(outbox_id),
         "message": "Вы успешно зарегистрированы",
-        "notification_idempotency_key": "ticket-key-1",
+        "notification_idempotency_key": idempotency_key,
     }
     return row
 
@@ -67,6 +72,31 @@ async def test_process_outbox_events_rolls_back_on_server_error():
     outbox_repo.mark_sent.assert_not_awaited()
     session.rollback.assert_awaited_once()
     session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_outbox_events_continues_after_rollback_on_first_row():
+    session = AsyncMock()
+    outbox_repo = MagicMock()
+    outbox_repo.list_pending = AsyncMock(
+        return_value=[
+            make_pending_row(OUTBOX_ID, idempotency_key="ticket-key-1"),
+            make_pending_row(OUTBOX_ID_2, idempotency_key="ticket-key-2"),
+        ]
+    )
+    outbox_repo.mark_sent = AsyncMock()
+    capashino_client = AsyncMock()
+    capashino_client.create_notification.side_effect = [
+        CapashinoServerError("server error"),
+        None,
+    ]
+
+    await process_outbox_events(outbox_repo, capashino_client, session)
+
+    assert capashino_client.create_notification.await_count == 2
+    outbox_repo.mark_sent.assert_awaited_once_with(outbox_id=OUTBOX_ID_2)
+    session.rollback.assert_awaited_once()
+    session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio

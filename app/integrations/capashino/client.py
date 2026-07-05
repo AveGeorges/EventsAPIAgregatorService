@@ -49,8 +49,8 @@ class CapashinoClient:
     async def __aexit__(self, *args: object) -> None:
         await self.aclose()
 
-    def _endpoint(self, *parts: str) -> str:
-        return join_url(self._base_url, *parts, trailing_slash=True)
+    def _endpoint(self, *parts: str, trailing_slash: bool = False) -> str:
+        return join_url(self._base_url, *parts, trailing_slash=trailing_slash)
 
     async def create_notification(
         self,
