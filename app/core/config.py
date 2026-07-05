@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     OUTBOX_POLL_INTERVAL_SECONDS: int = 10
     OUTBOX_WORKER_ENABLED: bool = True
 
+    GLITCHTIP_DSN: str = ""
+    SENTRY_DSN: str = ""
+
     SYNC_CRON_ENABLED: bool = True
     SYNC_CRON_HOUR: int = 3
     SYNC_CRON_MINUTE: int = 0
@@ -43,6 +46,10 @@ class Settings(BaseSettings):
     @property
     def capashino_base_url(self) -> str:
         return normalize_base_url(self.CAPASHINO_BASE_URL)
+
+    @property
+    def glitchtip_dsn(self) -> str:
+        return self.GLITCHTIP_DSN or self.SENTRY_DSN
 
     @property
     def database_url_sync(self) -> str:

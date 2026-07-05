@@ -10,6 +10,7 @@ from app.api.exception_handlers import register_exception_handlers
 from app.api.middleware import RequestIdMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.glitchtip import init_glitchtip
 from app.core.logging import configure_logging
 from app.services.outbox_worker import run_outbox_worker_loop
 from app.services.sync_scheduler import run_scheduled_sync
@@ -61,6 +62,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     configure_logging()
+    init_glitchtip()
 
     app = FastAPI(
         title=settings.PROJECT_NAME,

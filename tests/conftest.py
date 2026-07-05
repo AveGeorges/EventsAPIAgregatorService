@@ -10,6 +10,8 @@ os.environ.setdefault("EVENTS_PROVIDER_BASE_URL", "http://provider.test")
 os.environ.setdefault("POSTGRES_HOST", "localhost")
 os.environ.setdefault("SYNC_CRON_ENABLED", "false")
 os.environ.setdefault("OUTBOX_WORKER_ENABLED", "false")
+os.environ.setdefault("GLITCHTIP_DSN", "")
+os.environ.setdefault("SENTRY_DSN", "")
 
 import pytest
 from httpx import ASGITransport, AsyncClient
