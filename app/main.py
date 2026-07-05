@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -10,6 +11,7 @@ from app.api.middleware import RequestIdMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.services.outbox_worker import run_outbox_worker_loop
 from app.services.sync_scheduler import run_scheduled_sync
 
 logger = logging.getLogger(__name__)
@@ -18,6 +20,11 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler: AsyncIOScheduler | None = None
+    outbox_task: asyncio.Task | None = None
+
+    if settings.OUTBOX_WORKER_ENABLED:
+        outbox_task = asyncio.create_task(run_outbox_worker_loop())
+        logger.info("Outbox worker started")
 
     if settings.SYNC_CRON_ENABLED:
         scheduler = AsyncIOScheduler(timezone=settings.SYNC_CRON_TIMEZONE)
@@ -40,6 +47,13 @@ async def lifespan(app: FastAPI):
         )
 
     yield
+
+    if outbox_task is not None:
+        outbox_task.cancel()
+        try:
+            await outbox_task
+        except asyncio.CancelledError:
+            pass
 
     if scheduler is not None:
         scheduler.shutdown(wait=False)

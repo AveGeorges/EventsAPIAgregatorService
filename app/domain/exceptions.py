@@ -37,3 +37,9 @@ class SyncLockNotAcquired(DomainError):
     status_code = 409
     code = "sync_already_running"
     default_message = "Sync is already running in another process"
+
+
+class IdempotencyConflict(DomainError):
+    status_code = 409
+    code = "idempotency_conflict"
+    default_message = "Idempotency key already used with different request parameters"

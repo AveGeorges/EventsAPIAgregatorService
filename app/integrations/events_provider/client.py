@@ -5,6 +5,7 @@ from uuid import UUID
 import httpx
 
 from app.core.config import settings
+from app.core.http_utils import _extract_error_message
 from app.core.url_utils import join_url, normalize_base_url
 from app.integrations.events_provider.exceptions import (
     EventsProviderAuthError,
@@ -23,27 +24,6 @@ from app.integrations.events_provider.schemas import (
     ProviderSeatsSchema,
     ProviderUnregisterResponseSchema,
 )
-
-
-def _extract_error_message(response: httpx.Response) -> str:
-    content_type = response.headers.get("content-type", "")
-    if "application/json" in content_type:
-        try:
-            payload = response.json()
-        except ValueError:
-            return response.text or f"HTTP {response.status_code}"
-        if isinstance(payload, dict):
-            detail = payload.get("detail")
-            if isinstance(detail, str):
-                return detail
-            if isinstance(detail, dict):
-                return str(detail.get("message") or detail)
-        return str(payload)
-
-    text = response.text.strip()
-    if text:
-        return text[:500]
-    return f"HTTP {response.status_code}"
 
 
 class EventsProviderClient:

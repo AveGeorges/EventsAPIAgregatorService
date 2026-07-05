@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     EVENTS_PROVIDER_BASE_URL: str = "http://events-provider.dev-2.python-labs.ru"
     EVENTS_PROVIDER_API_KEY: str = ""
 
+    CAPASHINO_BASE_URL: str = "http://capashino.dev-2.python-labs.ru"
+    CAPASHINO_API_KEY: str = ""
+
+    OUTBOX_POLL_INTERVAL_SECONDS: int = 10
+    OUTBOX_WORKER_ENABLED: bool = True
+
     SYNC_CRON_ENABLED: bool = True
     SYNC_CRON_HOUR: int = 3
     SYNC_CRON_MINUTE: int = 0
@@ -33,6 +39,10 @@ class Settings(BaseSettings):
     @property
     def events_provider_base_url(self) -> str:
         return normalize_base_url(self.EVENTS_PROVIDER_BASE_URL)
+
+    @property
+    def capashino_base_url(self) -> str:
+        return normalize_base_url(self.CAPASHINO_BASE_URL)
 
     @property
     def database_url_sync(self) -> str:

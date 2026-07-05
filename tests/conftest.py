@@ -9,6 +9,7 @@ if sys.platform == "win32":
 os.environ.setdefault("EVENTS_PROVIDER_BASE_URL", "http://provider.test")
 os.environ.setdefault("POSTGRES_HOST", "localhost")
 os.environ.setdefault("SYNC_CRON_ENABLED", "false")
+os.environ.setdefault("OUTBOX_WORKER_ENABLED", "false")
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -45,7 +46,10 @@ async def _clean_database():
     try:
         async with test_engine.begin() as conn:
             await conn.execute(
-                text("TRUNCATE TABLE tickets, events, places, sync_state RESTART IDENTITY CASCADE")
+                text(
+                    "TRUNCATE TABLE idempotency, outbox, tickets, events, places, sync_state "
+                    "RESTART IDENTITY CASCADE"
+                )
             )
     except OSError as exc:
         pytest.skip(f"PostgreSQL unavailable: {exc}")

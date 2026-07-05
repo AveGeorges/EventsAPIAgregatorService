@@ -14,3 +14,12 @@ class EventStatus(str, Enum):
     CANCELLED = "cancelled"
     REGISTRATION_CLOSED = "registration_closed"
     FINISHED = "finished"
+
+
+class OutboxEventStatus(str, Enum):
+    PENDING = "pending"
+    SENT = "sent"
+
+
+class OutboxEventType(str, Enum):
+    TICKET_PURCHASED = "ticket_purchased"
