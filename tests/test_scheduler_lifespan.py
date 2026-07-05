@@ -1,6 +1,6 @@
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import asyncio
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from app.main import lifespan
@@ -10,7 +10,9 @@ from app.main import lifespan
 @patch("app.main.asyncio.create_task")
 @patch("app.main.AsyncIOScheduler")
 @patch("app.main.settings")
-async def test_lifespan_starts_scheduler_when_cron_enabled(mock_settings, mock_scheduler_cls, mock_create_task):
+async def test_lifespan_starts_scheduler_when_cron_enabled(
+    mock_settings, mock_scheduler_cls, mock_create_task
+):
     mock_settings.SYNC_CRON_ENABLED = True
     mock_settings.OUTBOX_WORKER_ENABLED = False
     mock_settings.SYNC_CRON_HOUR = 3
@@ -55,7 +57,9 @@ async def test_lifespan_starts_outbox_worker_when_enabled(mock_settings, mock_sc
 @patch("app.main.asyncio.create_task")
 @patch("app.main.AsyncIOScheduler")
 @patch("app.main.settings")
-async def test_lifespan_skips_scheduler_when_cron_disabled(mock_settings, mock_scheduler_cls, mock_create_task):
+async def test_lifespan_skips_scheduler_when_cron_disabled(
+    mock_settings, mock_scheduler_cls, mock_create_task
+):
     mock_settings.SYNC_CRON_ENABLED = False
     mock_settings.OUTBOX_WORKER_ENABLED = False
     app = MagicMock()

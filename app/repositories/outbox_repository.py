@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
 
-from app.domain.enums import OutboxEventType, OutboxEventStatus
+from app.domain.enums import OutboxEventStatus, OutboxEventType
 from app.models.models import Outbox
 
 
@@ -33,7 +33,11 @@ class OutboxRepository:
         await self._session.execute(stmt)
 
     async def list_pending(self) -> list[Outbox]:
-        stmt = select(Outbox).where(Outbox.status == OutboxEventStatus.PENDING).order_by(Outbox.created_at.asc())
+        stmt = (
+            select(Outbox)
+            .where(Outbox.status == OutboxEventStatus.PENDING)
+            .order_by(Outbox.created_at.asc())
+        )
         result = await self._session.execute(stmt)
         return result.scalars().all()
 

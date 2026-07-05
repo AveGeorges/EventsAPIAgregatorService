@@ -1,7 +1,7 @@
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
-import asyncio
 import pytest
 
 from app.integrations.capashino.exceptions import CapashinoConflictError, CapashinoServerError

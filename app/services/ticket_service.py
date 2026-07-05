@@ -2,13 +2,13 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.exceptions import EventNotFound, TicketNotFound, IdempotencyConflict
+from app.core.idempotency import compute_request_hash
+from app.domain.exceptions import EventNotFound, IdempotencyConflict, TicketNotFound
 from app.integrations.events_provider.client import EventsProviderClient
 from app.integrations.events_provider.schemas import ProviderRegisterRequestSchema
-from app.core.idempotency import compute_request_hash
 from app.repositories.event_repository import EventRepository
-from app.repositories.outbox_repository import OutboxRepository
 from app.repositories.idempotency_repository import IdempotencyRepository
+from app.repositories.outbox_repository import OutboxRepository
 from app.repositories.ticket_repository import TicketRepository
 from app.schemas.ticket import TicketCancelResponseSchema, TicketCreateSchema, TicketResponseSchema
 from app.services.seats_service import SeatsService
@@ -78,7 +78,9 @@ class TicketService:
             payload={
                 "ticket_id": str(provider_response.ticket_id),
                 "message": f"Вы успешно зарегистрированы на мероприятие - {event.name}",
-                "notification_idempotency_key": payload.idempotency_key or f"ticket-{provider_response.ticket_id}",
+                "notification_idempotency_key": (
+                    payload.idempotency_key or f"ticket-{provider_response.ticket_id}"
+                ),
             },
         )
 

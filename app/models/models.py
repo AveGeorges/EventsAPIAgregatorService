@@ -126,13 +126,24 @@ class Outbox(Base):
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True)
-    event_type = Column(SQLAlchemyEnum(OutboxEventType, name="outbox_event_type", native_enum=False), nullable=False, default=OutboxEventType.TICKET_PURCHASED)
+    event_type = Column(
+        SQLAlchemyEnum(OutboxEventType, name="outbox_event_type", native_enum=False),
+        nullable=False,
+        default=OutboxEventType.TICKET_PURCHASED,
+    )
     payload = Column(JSONB, nullable=False)
-    status = Column(SQLAlchemyEnum(OutboxEventStatus, name="outbox_event_status", native_enum=False), nullable=False, default=OutboxEventStatus.PENDING)
+    status = Column(
+        SQLAlchemyEnum(OutboxEventStatus, name="outbox_event_status", native_enum=False),
+        nullable=False,
+        default=OutboxEventStatus.PENDING,
+    )
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
     def __repr__(self) -> str:
-        return f"Outbox(id={self.id!s}, event_type={self.event_type!r}, status={self.status!r}, created_at={self.created_at!r})"
+        return (
+            f"Outbox(id={self.id!s}, event_type={self.event_type!r}, "
+            f"status={self.status!r}, created_at={self.created_at!r})"
+        )
 
 
 class Idempotency(Base):
@@ -144,4 +155,9 @@ class Idempotency(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
     def __repr__(self) -> str:
-        return f"Idempotency(idempotency_key={self.idempotency_key!r}, ticket_id={self.ticket_id!s}, request_hash={self.request_hash!r}, created_at={self.created_at!r})"
+        return (
+            f"Idempotency(idempotency_key={self.idempotency_key!r}, "
+            f"ticket_id={self.ticket_id!s}, request_hash={self.request_hash!r}, "
+            f"created_at={self.created_at!r})"
+        )
+

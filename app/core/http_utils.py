@@ -1,5 +1,6 @@
 import httpx
 
+
 def _extract_error_message(response: httpx.Response) -> str:
     content_type = response.headers.get("content-type", "")
     if "application/json" in content_type:

@@ -6,15 +6,14 @@ from app.core.config import settings
 from app.core.http_utils import _extract_error_message
 from app.core.url_utils import join_url, normalize_base_url
 from app.integrations.capashino.exceptions import (
-    CapashinoError,
     CapashinoBadRequestError,
-    CapashinoUnauthorizedError,
     CapashinoConflictError,
-    CapashinoUnprocessableError,
+    CapashinoError,
     CapashinoRateLimitError,
-    CapashinoServerError
+    CapashinoServerError,
+    CapashinoUnauthorizedError,
+    CapashinoUnprocessableError,
 )
-
 from app.integrations.capashino.schemas import (
     CapashinoNotificationCreateSchema,
     CapashinoNotificationResponseSchema,
@@ -52,7 +51,7 @@ class CapashinoClient:
 
     def _endpoint(self, *parts: str) -> str:
         return join_url(self._base_url, *parts, trailing_slash=True)
-    
+
     async def create_notification(
         self,
         payload: CapashinoNotificationCreateSchema,
