@@ -5,6 +5,7 @@ import httpx
 import pytest
 import respx
 
+from app.core.metrics import EVENTS_PROVIDER_REQUESTS_TOTAL
 from app.integrations.events_provider.client import EventsProviderClient
 from app.integrations.events_provider.exceptions import (
     EventsProviderAuthError,
@@ -36,6 +37,19 @@ async def test_list_events_sends_api_key_and_parses_response(provider_client: Ev
     assert len(page.results) == 1
     assert page.results[0].id == EVENT_ID
     assert page.results[0].place.city == "Москва"
+
+
+@respx.mock
+async def test_list_events_records_prometheus_metrics(provider_client: EventsProviderClient):
+    respx.get(provider_url("api", "events")).mock(
+        return_value=httpx.Response(200, json=sample_events_page_payload())
+    )
+    before = EVENTS_PROVIDER_REQUESTS_TOTAL.labels(endpoint="/events", status="200")._value.get()
+
+    await provider_client.list_events(date(2000, 1, 1))
+
+    after = EVENTS_PROVIDER_REQUESTS_TOTAL.labels(endpoint="/events", status="200")._value.get()
+    assert after == before + 1
 
 
 @respx.mock
