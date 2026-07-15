@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from time import monotonic
 from uuid import UUID
 
+from app.core.metrics import CACHE_HITS_TOTAL, CACHE_MISSES_TOTAL
 from app.schemas.seats import SeatsResponseSchema
 
 DEFAULT_SEATS_CACHE_TTL_SECONDS = 30
@@ -21,10 +22,13 @@ class SeatsCache:
     def get(self, event_id: UUID) -> SeatsResponseSchema | None:
         entry = self._entries.get(event_id)
         if entry is None:
+            CACHE_MISSES_TOTAL.inc()
             return None
         if monotonic() >= entry.expires_at:
             del self._entries[event_id]
+            CACHE_MISSES_TOTAL.inc()
             return None
+        CACHE_HITS_TOTAL.inc()
         return entry.value
 
     def set(self, event_id: UUID, value: SeatsResponseSchema) -> None:

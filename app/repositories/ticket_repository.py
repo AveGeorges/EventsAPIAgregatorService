@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,3 +52,12 @@ class TicketRepository:
     async def delete(self, ticket_id: UUID) -> None:
         stmt = delete(Ticket).where(Ticket.ticket_id == ticket_id)
         await self._session.execute(stmt)
+
+    async def count(self) -> int:
+        stmt = select(func.count()).select_from(Ticket)
+        result = await self._session.execute(stmt)
+        return result.scalar_one()
+
+    async def count_cancelled(self) -> int:
+        # Билеты удаляются из БД при отмене, отдельного status нет.
+        return 0

@@ -7,6 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 
 from app.api.exception_handlers import register_exception_handlers
+from app.api.metrics import router as metrics_router
 from app.api.middleware import MetricsMiddleware, RequestIdMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(MetricsMiddleware)
     register_exception_handlers(app)
+    app.include_router(metrics_router)
     app.include_router(api_router, prefix="/api")
 
     return app
