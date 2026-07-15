@@ -7,7 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 
 from app.api.exception_handlers import register_exception_handlers
-from app.api.middleware import RequestIdMiddleware
+from app.api.middleware import MetricsMiddleware, RequestIdMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.glitchtip import init_glitchtip
@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(MetricsMiddleware)
     register_exception_handlers(app)
     app.include_router(api_router, prefix="/api")
 
