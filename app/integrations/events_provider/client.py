@@ -1,11 +1,17 @@
+import time
 from datetime import date
 from typing import Any
+from urllib.parse import urlparse
 from uuid import UUID
 
 import httpx
 
 from app.core.config import settings
 from app.core.http_utils import _extract_error_message
+from app.core.metrics import (
+    EVENTS_PROVIDER_REQUEST_DURATION_SECONDS,
+    EVENTS_PROVIDER_REQUESTS_TOTAL,
+)
 from app.core.url_utils import join_url, normalize_base_url
 from app.integrations.events_provider.exceptions import (
     EventsProviderAuthError,
@@ -24,6 +30,17 @@ from app.integrations.events_provider.schemas import (
     ProviderSeatsSchema,
     ProviderUnregisterResponseSchema,
 )
+
+
+def _provider_metrics_endpoint(url: str) -> str:
+    path = urlparse(url).path.rstrip("/")
+    if path.endswith("/seats"):
+        return "/seats"
+    if path.endswith("/register") or path.endswith("/unregister"):
+        return "/registration"
+    if path.endswith("/events") or "/events/" in path:
+        return "/events"
+    return path or "/"
 
 
 class EventsProviderClient:
@@ -126,13 +143,27 @@ class EventsProviderClient:
         **kwargs: Any,
     ) -> httpx.Response:
         request_url = url if absolute else url.lstrip("/")
+        metrics_url = request_url if absolute else join_url(self._base_url, request_url)
+        endpoint_label = _provider_metrics_endpoint(metrics_url)
+
+        start_time = time.monotonic()
+        status_code = "0"
         try:
             response = await self._client.request(method, request_url, **kwargs)
+            status_code = str(response.status_code)
+            self._raise_for_status(response)
+            return response
         except httpx.HTTPError as exc:
             raise EventsProviderError(f"Events Provider request failed: {exc}") from exc
-
-        self._raise_for_status(response)
-        return response
+        finally:
+            duration = time.monotonic() - start_time
+            EVENTS_PROVIDER_REQUESTS_TOTAL.labels(
+                endpoint=endpoint_label,
+                status=status_code,
+            ).inc()
+            EVENTS_PROVIDER_REQUEST_DURATION_SECONDS.labels(
+                endpoint=endpoint_label,
+            ).observe(duration)
 
     def _raise_for_status(self, response: httpx.Response) -> None:
         if response.is_success:
